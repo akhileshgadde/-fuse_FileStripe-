@@ -1,0 +1,1500 @@
+
+bb_init()
+    conn:
+    proto_major = 7
+    proto_minor = 22
+    async_read = 1
+    max_write = 131072
+    max_readahead = 131072
+    capable = 00000ffb
+    want = 00000010
+    max_background = 0
+    congestion_threshold = 0
+    context:
+    fuse = 09eac388
+    uid = 0
+    gid = 0
+    pid = 0
+    private_data = 09eab008
+    logfile = 09eac020
+    rootdir = /home/nsac/fuse-tutorial-2014-06-12/example/rootdir
+    umask = 00000
+
+bb_getattr(path="/.Trash", statbuf=0xb7584104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/.Trash", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/.Trash"
+    ERROR bb_getattr lstat: No such file or directory
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 00
+    st_nlink = 0
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x00000000
+    st_ctime = 0x00000000
+
+bb_getattr(path="/.Trash-1000", statbuf=0xb6bff104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/.Trash-1000", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/.Trash-1000"
+    ERROR bb_getattr lstat: No such file or directory
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 00
+    st_nlink = 0
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x00000000
+    st_ctime = 0x00000000
+
+bb_getattr(path="/.xdg-volume-info", statbuf=0xb7584104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/.xdg-volume-info", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/.xdg-volume-info"
+    ERROR bb_getattr lstat: No such file or directory
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 00
+    st_nlink = 0
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x00000000
+    st_ctime = 0x00000000
+
+bb_getattr(path="/autorun.inf", statbuf=0xb6bff104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/autorun.inf", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/autorun.inf"
+    ERROR bb_getattr lstat: No such file or directory
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 00
+    st_nlink = 0
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x00000000
+    st_ctime = 0x00000000
+
+bb_opendir(path="/", fi=0xb7584134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c006e8
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb6c00590, filler=0xb777de80, offset=0, fi=0xb6bff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c006e8
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c006e8
+    lock_owner = 0x0000000000000000
+
+bb_getattr(path="/bogus.txt", statbuf=0xb6bff104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/bogus.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/bogus.txt"
+    si:
+    st_dev = 2049
+    st_ino = 4860151
+    st_mode = 0100664
+    st_nlink = 1
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 11
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8c21
+    st_mtime = 0x553a8b40
+    st_ctime = 0x553a8b40
+
+bb_releasedir(path="/", fi=0xb6bff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c006e8
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c006e8
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb7584134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb6c00678, filler=0xb777de80, offset=0, fi=0xb61ff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb61ff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb6bff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb62004e0, filler=0xb777de80, offset=0, fi=0xb7584114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb7584134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb61ff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb58004e0, filler=0xb777de80, offset=0, fi=0xb6bff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb6bff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb7584134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb6c00678, filler=0xb777de80, offset=0, fi=0xb61ff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb61ff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb6bff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb62004e0, filler=0xb777de80, offset=0, fi=0xb7584114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb7584134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb61ff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb58004e0, filler=0xb777de80, offset=0, fi=0xb6bff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb6bff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+
+bb_opendir(path="/", fi=0xb7584134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb6c00678, filler=0xb777de80, offset=0, fi=0xb61ff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb61ff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb7584134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c00718
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb6c006c8, filler=0xb777de80, offset=0, fi=0xb6bff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c00718
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c00718
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb6bff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c00718
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c00718
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb61ff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb58004e0, filler=0xb777de80, offset=0, fi=0xb7584114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb7584134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb6bff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb62004e0, filler=0xb777de80, offset=0, fi=0xb61ff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb61ff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb7584134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb6c00678, filler=0xb777de80, offset=0, fi=0xb6bff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb6bff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb61ff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb58004e0, filler=0xb777de80, offset=0, fi=0xb7584114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb7584134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb6bff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb62004e0, filler=0xb777de80, offset=0, fi=0xb61ff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb61ff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb7584134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb6c00678, filler=0xb777de80, offset=0, fi=0xb6bff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb6bff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb61ff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb58004e0, filler=0xb777de80, offset=0, fi=0xb7584114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb7584134)
+    fi:
+
+bb_opendir(path="/", fi=0xb6bff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb62004e0, filler=0xb777de80, offset=0, fi=0xb61ff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb61ff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb7584134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb6c00678, filler=0xb777de80, offset=0, fi=0xb6bff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb6bff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb61ff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb58004e0, filler=0xb777de80, offset=0, fi=0xb7584114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb7584134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+
+bb_opendir(path="/", fi=0xb6bff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb62004e0, filler=0xb777de80, offset=0, fi=0xb61ff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb61ff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb7584134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb6c00678, filler=0xb777de80, offset=0, fi=0xb6bff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb6bff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_opendir(path="/", fi=0xb61ff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb58004e0, filler=0xb777de80, offset=0, fi=0xb7584114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_releasedir(path="/", fi=0xb7584134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_getattr(path="/autorun.inf", statbuf=0xb7584104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/autorun.inf", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/autorun.inf"
+    ERROR bb_getattr lstat: No such file or directory
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 00
+    st_nlink = 0
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x00000000
+    st_ctime = 0x00000000
+
+bb_getattr(path="/", statbuf=0xb6bff0f4)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    si:
+    st_dev = 2049
+    st_ino = 4860150
+    st_mode = 040775
+    st_nlink = 2
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 4096
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8c4c
+    st_mtime = 0x553a8c23
+    st_ctime = 0x553a8c23
+
+bb_opendir(path="/", fi=0xb7584134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb6c00678, filler=0xb777de80, offset=0, fi=0xb6bff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_getattr(path="/bogus.txt", statbuf=0xb61ff104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/bogus.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/bogus.txt"
+    si:
+    st_dev = 2049
+    st_ino = 4860151
+    st_mode = 0100664
+    st_nlink = 1
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 11
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8c21
+    st_mtime = 0x553a8b40
+    st_ctime = 0x553a8b40
+
+bb_releasedir(path="/", fi=0xb6bff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6c007d0
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6c007d0
+    lock_owner = 0x0000000000000000
+
+bb_getattr(path="/", statbuf=0xb61ff0f4)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    si:
+    st_dev = 2049
+    st_ino = 4860150
+    st_mode = 040775
+    st_nlink = 2
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 4096
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8c4c
+    st_mtime = 0x553a8d00
+    st_ctime = 0x553a8d00
+
+bb_getattr(path="/", statbuf=0xb75840f4)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    si:
+    st_dev = 2049
+    st_ino = 4860150
+    st_mode = 040775
+    st_nlink = 2
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 4096
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8c4c
+    st_mtime = 0x553a8d00
+    st_ctime = 0x553a8d00
+
+bb_opendir(path="/", fi=0xb6bff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb62004e0, filler=0xb777de80, offset=0, fi=0xb61ff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name test1.txt
+calling filler with name ..
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_getattr(path="/bogus.txt", statbuf=0xb7584104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/bogus.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/bogus.txt"
+    si:
+    st_dev = 2049
+    st_ino = 4860151
+    st_mode = 0100664
+    st_nlink = 1
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 11
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8c21
+    st_mtime = 0x553a8b40
+    st_ctime = 0x553a8b40
+
+bb_getattr(path="/test1.txt", statbuf=0xb6bff104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/test1.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/test1.txt"
+    si:
+    st_dev = 2049
+    st_ino = 4860149
+    st_mode = 0100664
+    st_nlink = 1
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 19
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8d00
+    st_mtime = 0x553a8d00
+    st_ctime = 0x553a8d00
+
+bb_releasedir(path="/", fi=0xb7584134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_getattr(path="/", statbuf=0xb6bff0f4)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    si:
+    st_dev = 2049
+    st_ino = 4860150
+    st_mode = 040775
+    st_nlink = 2
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 4096
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8d0a
+    st_mtime = 0x553a8d00
+    st_ctime = 0x553a8d00
+
+bb_access(path="/", mask=01)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+
+bb_getattr(path="/", statbuf=0xb75840f4)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    si:
+    st_dev = 2049
+    st_ino = 4860150
+    st_mode = 040775
+    st_nlink = 2
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 4096
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8d0a
+    st_mtime = 0x553a8d00
+    st_ctime = 0x553a8d00
+
+bb_getattr(path="/test2.txt", statbuf=0xb6bff104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/test2.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/test2.txt"
+    ERROR bb_getattr lstat: No such file or directory
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 00
+    st_nlink = 0
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x00000000
+    st_ctime = 0x00000000
+
+bb_create(path="/test2.txt", mode=0100664, fi=0xb61ff1b0)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/test2.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/test2.txt"
+    fi:
+    flags = 0x00008241
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000005
+    lock_owner = 0x0000000000000000
+
+bb_fgetattr(path="/test2.txt", statbuf=0xb61ff0c4, fi=0xb61ff1b0)
+    fi:
+    flags = 0x00008241
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000005
+    lock_owner = 0x0000000000000000
+    si:
+    st_dev = 2049
+    st_ino = 4860153
+    st_mode = 0100664
+    st_nlink = 1
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 4096
+    st_blocks = 0
+    st_atime = 0x553a8d42
+    st_mtime = 0x553a8d42
+    st_ctime = 0x553a8d42
+
+bb_flush(path="/test2.txt", fi=0xb75841c0)
+    fi:
+    flags = 0x00000000
+    fh_old = 0x00000005
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000005
+    lock_owner = 0x8943c35b3d747c9d
+
+bb_getattr(path="/%%%%test2%%%%%%", statbuf=0xb6bff104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/%%%%test2%%%%%%", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/%%%%test2%%%%%%"
+    ERROR bb_getattr lstat: No such file or directory
+    si:
+    st_dev = 0
+    st_ino = 0
+    st_mode = 00
+    st_nlink = 0
+    st_uid = 0
+    st_gid = 0
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 0
+    st_blocks = 0
+    st_atime = 0x00000000
+    st_mtime = 0x00000000
+    st_ctime = 0x00000000
+
+bb_flush(path="/test2.txt", fi=0xb61ff1c0)
+    fi:
+    flags = 0x00000000
+    fh_old = 0x00000005
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000005
+    lock_owner = 0x8943c35b3d747c9d
+
+bb_release(path="/test2.txt", fi=0xb75841b0)
+    fi:
+    flags = 0x00008001
+    fh_old = 0x00000005
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000005
+    lock_owner = 0x0000000000000000
+
+bb_getattr(path="/test2.txt", statbuf=0xb6bff104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/test2.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/test2.txt"
+    si:
+    st_dev = 2049
+    st_ino = 4860153
+    st_mode = 0100664
+    st_nlink = 1
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 4096
+    st_blocks = 0
+    st_atime = 0x553a8d42
+    st_mtime = 0x553a8d42
+    st_ctime = 0x553a8d42
+
+bb_open(path"/test2.txt", fi=0xb61ff1c0)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/test2.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/test2.txt"
+    fi:
+    flags = 0x00008001
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000005
+    lock_owner = 0x0000000000000000
+
+bb_truncate(path="/test2.txt", newsize=0)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/test2.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/test2.txt"
+
+bb_getattr(path="/test2.txt", statbuf=0xb7584074)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/test2.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/test2.txt"
+    si:
+    st_dev = 2049
+    st_ino = 4860153
+    st_mode = 0100664
+    st_nlink = 1
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 0
+    st_blksize = 4096
+    st_blocks = 0
+    st_atime = 0x553a8d42
+    st_mtime = 0x553a8d50
+    st_ctime = 0x553a8d50
+
+bb_flush(path="/test2.txt", fi=0xb61ff1c0)
+    fi:
+    flags = 0x00000000
+    fh_old = 0x00000005
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000005
+    lock_owner = 0xaf7e651478eee185
+
+bb_write(path="/test2.txt", buf=0xb7585058, size=16, offset=0, fi=0xb7584244)
+    fi:
+    flags = 0x00008001
+    fh_old = 0x00000005
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000005
+    lock_owner = 0x0000000000000000
+
+bb_flush(path="/test2.txt", fi=0xb6bff1c0)
+    fi:
+    flags = 0x00000000
+    fh_old = 0x00000005
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000005
+    lock_owner = 0xaf7e651478eee185
+
+bb_release(path="/test2.txt", fi=0xb61ff1b0)
+    fi:
+    flags = 0x00008001
+    fh_old = 0x00000005
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0x0000000000000005
+    lock_owner = 0x0000000000000000
+
+bb_getattr(path="/", statbuf=0xb75840f4)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    si:
+    st_dev = 2049
+    st_ino = 4860150
+    st_mode = 040775
+    st_nlink = 2
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 4096
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8d0a
+    st_mtime = 0x553a8d42
+    st_ctime = 0x553a8d42
+
+bb_getattr(path="/", statbuf=0xb6bff0f4)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    si:
+    st_dev = 2049
+    st_ino = 4860150
+    st_mode = 040775
+    st_nlink = 2
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 4096
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8d0a
+    st_mtime = 0x553a8d42
+    st_ctime = 0x553a8d42
+
+bb_opendir(path="/", fi=0xb61ff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb58004e0, filler=0xb777de80, offset=0, fi=0xb7584114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name test1.txt
+calling filler with name ..
+calling filler with name test2.txt
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_getattr(path="/bogus.txt", statbuf=0xb6bff104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/bogus.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/bogus.txt"
+    si:
+    st_dev = 2049
+    st_ino = 4860151
+    st_mode = 0100664
+    st_nlink = 1
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 11
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8c21
+    st_mtime = 0x553a8b40
+    st_ctime = 0x553a8b40
+
+bb_getattr(path="/test1.txt", statbuf=0xb61ff104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/test1.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/test1.txt"
+    si:
+    st_dev = 2049
+    st_ino = 4860149
+    st_mode = 0100664
+    st_nlink = 1
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 19
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8d00
+    st_mtime = 0x553a8d00
+    st_ctime = 0x553a8d00
+
+bb_getattr(path="/test2.txt", statbuf=0xb7584104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/test2.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/test2.txt"
+    si:
+    st_dev = 2049
+    st_ino = 4860153
+    st_mode = 0100664
+    st_nlink = 1
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 16
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8d42
+    st_mtime = 0x553a8d50
+    st_ctime = 0x553a8d50
+
+bb_releasedir(path="/", fi=0xb61ff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb5800638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb5800638
+    lock_owner = 0x0000000000000000
+
+bb_getattr(path="/", statbuf=0xb75840f4)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    si:
+    st_dev = 2049
+    st_ino = 4860150
+    st_mode = 040775
+    st_nlink = 2
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 4096
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8d55
+    st_mtime = 0x553a8d42
+    st_ctime = 0x553a8d42
+
+bb_opendir(path="/", fi=0xb6bff134)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/"
+    fi:
+    flags = 0x00018800
+    fh_old = 0x00000000
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_readdir(path="/", buf=0xb62004e0, filler=0xb777de80, offset=0, fi=0xb61ff114)
+calling filler with name .
+calling filler with name bogus.txt
+calling filler with name test1.txt
+calling filler with name ..
+calling filler with name test2.txt
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_getattr(path="/bogus.txt", statbuf=0xb7584104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/bogus.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/bogus.txt"
+    si:
+    st_dev = 2049
+    st_ino = 4860151
+    st_mode = 0100664
+    st_nlink = 1
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 11
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8c21
+    st_mtime = 0x553a8b40
+    st_ctime = 0x553a8b40
+
+bb_getattr(path="/test1.txt", statbuf=0xb6bff104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/test1.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/test1.txt"
+    si:
+    st_dev = 2049
+    st_ino = 4860149
+    st_mode = 0100664
+    st_nlink = 1
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 19
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8d00
+    st_mtime = 0x553a8d00
+    st_ctime = 0x553a8d00
+
+bb_getattr(path="/test2.txt", statbuf=0xb61ff104)
+    bb_fullpath:  rootdir = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir", path = "/test2.txt", fpath = "/home/nsac/fuse-tutorial-2014-06-12/example/rootdir/test2.txt"
+    si:
+    st_dev = 2049
+    st_ino = 4860153
+    st_mode = 0100664
+    st_nlink = 1
+    st_uid = 1000
+    st_gid = 1000
+    st_rdev = 0
+    st_size = 16
+    st_blksize = 4096
+    st_blocks = 8
+    st_atime = 0x553a8d42
+    st_mtime = 0x553a8d50
+    st_ctime = 0x553a8d50
+
+bb_releasedir(path="/", fi=0xb6bff134)
+    fi:
+    flags = 0x00000000
+    fh_old = 0xb6200638
+    writepage = 0
+    direct_io = 0
+    keep_cache = 0
+    fh = 0xffffffffb6200638
+    lock_owner = 0x0000000000000000
+
+bb_destroy(userdata=0x09eab008)
