@@ -1,4 +1,4 @@
-/* Code credits: Joseph J. Pfeiffer, Jr., Ph.D, Emeritus Professor, New Mexico State University */
+/* Code skeleton credits: Joseph J. Pfeiffer, Emeritus Professor, New Mexico State University */
 
 // gcc -ggdb -Wall -o tfs tfs.c `pkg-config fuse --cflags --libs`
 
@@ -27,15 +27,17 @@ struct fuse_file_desc
 	int bfd;
 }*tfs_fd;
 
-// Report errors to logfile and give -errno to caller
+// Give -errno to caller
 static int tfs_error(char *str)
 {
+    printf("In Error function\n");
     int ret = -errno;
     return ret;
 }
 
 static void tfs_fullpath(char fpath[PATH_MAX], const char *path)
 {
+    printf("In fullpath function\n");
     strcpy(fpath, TFS_DATA->rootdir);
     strncat(fpath, path, PATH_MAX); 
     //printf("tfs_fullpath:%s\n", TFS->rootdir);
@@ -43,69 +45,109 @@ static void tfs_fullpath(char fpath[PATH_MAX], const char *path)
 
 int tfs_getattr(const char *path, struct stat *statbuf)
 {
+    printf("In getattr function\n");
     int retstat = 0;
     char fpath[PATH_MAX];
 
     tfs_fullpath(fpath, path);
-
-    retstat = lstat(fpath, statbuf);
+    #if 1
+    if (strstr(path, "_dir") != NULL) 
+    {
+    	retstat = lstat(fpath, statbuf);
+	goto ret;
+    }
+    #endif
+    if (!strcmp(path, "/"))
+    {
+	retstat = lstat(fpath, statbuf);
+    }
+    else {
+	strcat(fpath, "_dir");
+	retstat = lstat(fpath, statbuf);
+    }
     if (retstat != 0)
         retstat = tfs_error("tfs_getattr lstat");
+    #if 0
+    if (retstat < 0)
+	retstat = 0;
+    #endif
+    ret:
+    return retstat;
+}
+
+/*Change the permission bits of a file */
+int tfs_chmod(const char *path, mode_t mode)
+{
+    printf("In chmod function\n");
+    int retstat = 0;
+    char fpath[PATH_MAX];
+    tfs_fullpath(fpath, path);
+    retstat = chmod(fpath, mode);
+    if (retstat < 0)
+	retstat = tfs_error("tfs_chmod chmod");
+    return retstat;
+}
+
+/* Change the owner and group of a file */
+int tfs_chown(const char *path, uid_t uid, gid_t gid)
+{
+    printf("In chown function\n");
+    int retstat = 0;
+    char fpath[PATH_MAX];
+    tfs_fullpath(fpath, path);
+    retstat = chown(fpath, uid, gid);
+    if (retstat < 0)
+	retstat = tfs_error("tfs_chown chown");
+    return retstat;
+}
+
+/* change the size of a file */
+int tfs_truncate(const char *path, off_t newsize)
+{
+    printf("In truncate function\n");
+    int retstat = 0;
+    char fpath[PATH_MAX];
+    tfs_fullpath(fpath, path);
+    retstat = truncate(fpath, newsize);
+    if (retstat < 0 )
+	retstat = tfs_error("tfs_truncate truncate");
+    return retstat;
+}
+
+/*Change the access and/or modification times of a file */
+int tfs_utime(const char *path, struct utimbuf *ubuf)
+{
+    printf("In utime function\n");
+    int retstat = 0;
+    char fpath[PATH_MAX];
+    tfs_fullpath(fpath, path);
+    strcat(fpath, "_dir");
+    retstat = utime(fpath, ubuf);
+    if (retstat < 0)
+	retstat = tfs_error("tfs_utime utime");
     return retstat;
 }
 
 int tfs_open(const char *path, struct fuse_file_info *fi)
 {
     int retstat = 0;
-    int fd,bfd;
-    char *bkp;
+    int fd;
     char fpath[PATH_MAX];
-  
+   printf("In Open function\n"); 
    tfs_fullpath(fpath, path);
-   bkp = strstr(fpath,".bkp");
-   if (bkp != NULL) //If trying to open the .bkp file
-   {
-     bfd = open(fpath, fi->flags);
-     if (bfd < 0)
+   fd = open(fpath, fi->flags);
+   if (fd < 0)
         retstat = tfs_error("tfs_open open");
-     else
-        tfs_fd->bfd = bfd;
-     *bkp = '\0';
-     fd = open(fpath, fi->flags);
-     if (fd < 0)
-        retstat = tfs_error("tfs_open open");
-     else
+   else
         fi->fh = fd;
-   }
-   else //opening the normal file
-   {
-     fd = open(fpath, fi->flags);
-     if (fd < 0)
-        retstat = tfs_error("tfs_open open");
-     else
-        fi->fh = fd;
-     //opening backup file
-     strcat(fpath,".bkp");
-     bfd = open(fpath, fi->flags);
-     if (bfd < 0)
-        retstat = tfs_error("tfs_open open");
-     else
-        tfs_fd->bfd = bfd;
-   }
    return retstat;
 }
 
 int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
+    printf("In Read function\n");
     int retstat = 0;
-    char *bkp;
-    //int fd;
-    bkp = strstr(path,".bkp");//trying to read the backup file
-    if (bkp != NULL) {
-	retstat = pread(tfs_fd->bfd, buf, size, offset);
-    }
-    else  //readfing normal file
-    	retstat = pread(fi->fh, buf, size, offset);
+    retstat = pread(fi->fh, buf, size, offset);
     if (retstat < 0)
         retstat = tfs_error("tfs_read read");
     return retstat;
@@ -114,36 +156,29 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
              struct fuse_file_info *fi)
 {
+    printf("In write function\n");
     int retstat = 0;
-    //char *buff_local;
-    //int  bkp_size = 0;
-    struct stat st;
-    //int fd;
-    char bkp_path[PATH_MAX], *bkp;
     char fpath[PATH_MAX];
     tfs_fullpath(fpath, path);
-    strcpy(bkp_path, fpath);
-    bkp = strstr(bkp_path, ".bkp");
-    if (bkp == NULL)
-    	strcat(bkp_path, ".bkp"); 
-   stat(bkp_path , &st);
-   //if (st.st_size == 0)
-   //{	
-     // buff_local = strdup(buf);
-     // if (buff_local == 0) //out of memory
-      //   return -1;
-      retstat = write(tfs_fd->bfd, buf, size);
-      if (retstat < 0)
-          retstat = tfs_error("tfs_write pwrite");
-   //}
-   retstat = pwrite(fi->fh, buf, size, offset);
-   if (retstat < 0)
-       retstat = tfs_error("tfs_write pwrite");
-   return retstat; 
+    strcat(fpath, "_dir");
+    //retstat = mkdir(fpath, S_IRWXU|S_IRWXG|S_IRWXO);
+    if (retstat < 0)
+	retstat = tfs_error("tfs_write mkdir");
+    strcat(fpath, path);
+    int fd;
+    fd = open(fpath, O_CREAT);
+    if (fd < 0)
+	retstat = tfs_error("tfs_write open");
+    fi->fh = fd;
+    retstat = pwrite(fi->fh, buf, size, offset);
+    if (retstat < 0)
+        retstat = tfs_error("tfs_write pwrite");
+    return retstat; 
 }
 
 int tfs_statfs(const char *path, struct statvfs *statv)
 {
+    printf("In statfs function\n");
     int retstat = 0;
     char fpath[PATH_MAX];
 
@@ -158,6 +193,7 @@ int tfs_statfs(const char *path, struct statvfs *statv)
 
 int tfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi)
 {
+    printf("In Readdir function\n");
     int retstat = 0;
     DIR *dp;
     struct dirent *de;
@@ -182,6 +218,7 @@ int tfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
 
 int tfs_readlink(const char *path, char *link, size_t size)
 {
+    printf("In readlink function\n");
     int retstat = 0;
     char fpath[PATH_MAX];
 
@@ -200,9 +237,11 @@ int tfs_readlink(const char *path, char *link, size_t size)
 /** Create a directory */
 int tfs_mkdir(const char *path, mode_t mode)
 {
+    printf("In mkdir function\n");
     int retstat = 0;
     char fpath[PATH_MAX];
     tfs_fullpath(fpath, path);
+    strcat(fpath, "_dir");
     retstat = mkdir(fpath, mode);
     if (retstat < 0)
         retstat = tfs_error("tfs_mkdir mkdir");
@@ -212,6 +251,7 @@ int tfs_mkdir(const char *path, mode_t mode)
 //Remove a file
 int tfs_unlink(const char *path)
 {
+    printf("In unlink function\n");
     int retstat = 0;
     char fpath[PATH_MAX];
 
@@ -227,6 +267,7 @@ int tfs_unlink(const char *path)
 /** Remove a directory */
 int tfs_rmdir(const char *path)
 {
+    printf("In rmdir function\n");
     int retstat = 0;
     char fpath[PATH_MAX];
 
@@ -241,6 +282,7 @@ int tfs_rmdir(const char *path)
 
 int tfs_rename(const char *path, const char *newpath)
 {
+    printf("In rename function\n");
     int retstat = 0;
     char fpath[PATH_MAX];
     char fnewpath[PATH_MAX];
@@ -256,12 +298,16 @@ int tfs_rename(const char *path, const char *newpath)
 
 int tfs_opendir(const char *path, struct fuse_file_info *fi)
 {
+    printf("In Opendir function\n");
     DIR *dp;
     int retstat = 0;
     char fpath[PATH_MAX];
 
     tfs_fullpath(fpath, path);
-
+    if(strcmp(path, "/"))
+    { 
+	strcat(fpath, "_dir");
+    }
     dp = opendir(fpath);
     if (dp == NULL)
         retstat = tfs_error("tfs_opendir opendir");
@@ -273,26 +319,22 @@ int tfs_opendir(const char *path, struct fuse_file_info *fi)
 
 int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
+    printf("In create function\n");
     int retstat = 0;
     char fpath[PATH_MAX];
-    int fd,bfd;
-
     tfs_fullpath(fpath, path);
-    fd = creat(fpath, mode);
-    if (fd < 0)
-        return tfs_error("tfs_create creat");
-    fi->fh = fd;
-    strcat(fpath, ".bkp");
-    bfd = creat(fpath, mode);
-    if (bfd < 0)
-        return tfs_error("tfs_create creat");
-    tfs_fd->bfd = bfd;
+    //if (strstr(fpath, "_dir") == NULL)
+    strcat(fpath, "_dir");
+    retstat = mkdir(fpath, mode);
+    if (retstat < 0)
+        retstat = tfs_error("tfs_create creat");
     return retstat;
 }
 
 //Similar to close()
 int tfs_release(const char *path, struct fuse_file_info *fi)
 {
+    printf("In release function\n");
     int retstat = 0;
     // We need to close the file.  Had we allocated any resources
     // (buffers etc) we'd need to free them here as well.
@@ -306,6 +348,7 @@ int tfs_release(const char *path, struct fuse_file_info *fi)
 //simialar to release but for directories
 int tfs_releasedir(const char *path, struct fuse_file_info *fi)
 {
+    printf("In releasedir function\n");
     int retstat = 0;
     closedir((DIR *) (uintptr_t) fi->fh);
     return retstat;
@@ -314,10 +357,10 @@ int tfs_releasedir(const char *path, struct fuse_file_info *fi)
 /* Create a symbolic link */
 int tfs_symlink(const char *path, const char *link)
 {
+    printf("In symlink function\n");
     int retstat = 0;
     char flink[PATH_MAX];
     tfs_fullpath(flink, link);
-
     retstat = symlink(path, flink);
     if (retstat < 0)
         retstat = tfs_error("tfs_symlink symlink");
@@ -327,6 +370,7 @@ int tfs_symlink(const char *path, const char *link)
 /* Create a hard link to a file */
 int tfs_link(const char *path, const char *newpath)
 {
+    printf("In link function\n");
     int retstat = 0;
     char fpath[PATH_MAX], fnewpath[PATH_MAX];
     tfs_fullpath(fpath, path);
@@ -341,6 +385,7 @@ int tfs_link(const char *path, const char *newpath)
 
 int tfs_mknod(const char *path, mode_t mode, dev_t dev)
 {
+    printf("In mknod function\n");
     int retstat = 0;
     char fpath[PATH_MAX];
 
@@ -373,6 +418,10 @@ int tfs_mknod(const char *path, mode_t mode, dev_t dev)
 
 struct fuse_operations tfs_oper = {
   .getattr = tfs_getattr,
+  .chmod = tfs_chmod,
+  .chown = tfs_chown,
+  .truncate = tfs_truncate,
+  .utime = tfs_utime,
   .open = tfs_open,
   .read = tfs_read,
   .write = tfs_write,
