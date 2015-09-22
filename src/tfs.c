@@ -31,6 +31,7 @@ struct fuse_file_desc
 static int tfs_error(char *str)
 {
     printf("In Error function\n");
+    printf("Error: %s\n", strerror(errno));
     int ret = -errno;
     return ret;
 }
@@ -51,27 +52,30 @@ int tfs_getattr(const char *path, struct stat *statbuf)
 
     tfs_fullpath(fpath, path);
     #if 1
-    if (strstr(path, "_dir") != NULL) 
+    if (strstr(fpath, "_dir") != NULL) 
     {
-    	retstat = lstat(fpath, statbuf);
+    	printf("Fpath1: %s\n", fpath);
+	retstat = lstat(fpath, statbuf);
 	goto ret;
     }
     #endif
-    if (!strcmp(path, "/"))
+    if (!(strcmp(path, "/")) || !(strcmp(path, "/autorun.inf")))
     {
+	printf("Fpath2: %s\n", fpath);
 	retstat = lstat(fpath, statbuf);
     }
     else {
 	strcat(fpath, "_dir");
+	printf("Fpath3: %s\n", fpath);
 	retstat = lstat(fpath, statbuf);
     }
+    ret:
     if (retstat != 0)
         retstat = tfs_error("tfs_getattr lstat");
     #if 0
     if (retstat < 0)
 	retstat = 0;
     #endif
-    ret:
     return retstat;
 }
 
@@ -325,7 +329,7 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     tfs_fullpath(fpath, path);
     //if (strstr(fpath, "_dir") == NULL)
     strcat(fpath, "_dir");
-    retstat = mkdir(fpath, mode);
+    retstat = mkdir(fpath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     if (retstat < 0)
         retstat = tfs_error("tfs_create creat");
     return retstat;
