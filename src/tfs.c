@@ -51,7 +51,34 @@ int tfs_getattr(const char *path, struct stat *statbuf)
     char fpath[PATH_MAX];
 
     tfs_fullpath(fpath, path);
-    #if 1
+    if (!(strcmp(path, "/")) || !(strcmp(path, "/autorun.inf")))
+    {
+        printf("Fpath2: %s\n", fpath);
+        retstat = lstat(fpath, statbuf);
+    }
+    else {
+    	if (!strcmp(path, "/file1"))
+    	{
+        
+		if (strstr(fpath, path) == NULL)
+		{
+        		retstat = lstat(fpath, statbuf);
+			statbuf->st_mode = S_IFREG;
+		}
+		else {
+			strcat(fpath, "_dir");
+			strcat(fpath, path);
+			retstat = lstat(fpath, statbuf);
+		}
+        goto ret;
+    	}
+        else {
+    		strcat(fpath, "_dir");
+        	printf("Fpath3: %s\n", fpath);
+        	retstat = lstat(fpath, statbuf);
+    	}
+
+   #if 0
     if (strstr(fpath, "_dir") != NULL) 
     {
     	printf("Fpath1: %s\n", fpath);
@@ -59,16 +86,6 @@ int tfs_getattr(const char *path, struct stat *statbuf)
 	goto ret;
     }
     #endif
-    if (!(strcmp(path, "/")) || !(strcmp(path, "/autorun.inf")))
-    {
-	printf("Fpath2: %s\n", fpath);
-	retstat = lstat(fpath, statbuf);
-    }
-    else {
-	strcat(fpath, "_dir");
-	printf("Fpath3: %s\n", fpath);
-	retstat = lstat(fpath, statbuf);
-    }
     ret:
     if (retstat != 0)
         retstat = tfs_error("tfs_getattr lstat");
@@ -77,6 +94,20 @@ int tfs_getattr(const char *path, struct stat *statbuf)
 	retstat = 0;
     #endif
     return retstat;
+}
+
+/* Check file access permissions */
+int tfs_access(const char *path, int mask)
+{
+   int retstat = 0;
+   char fpath[PATH_MAX];
+   tfs_fullpath(fpath, path);
+   if (!(!(strcmp(path, "/")) || !(strcmp(path, "/autorun.inf"))))
+   {
+   strcat(fpath, "_dir");
+   }
+   retstat = access(fpath, mask);
+   return retstat;
 }
 
 /*Change the permission bits of a file */
@@ -112,9 +143,12 @@ int tfs_truncate(const char *path, off_t newsize)
     int retstat = 0;
     char fpath[PATH_MAX];
     tfs_fullpath(fpath, path);
-    retstat = truncate(fpath, newsize);
-    if (retstat < 0 )
-	retstat = tfs_error("tfs_truncate truncate");
+    if (strcmp(path, "/file1"))
+    {
+    	retstat = truncate(fpath, newsize);
+    }
+    	if (retstat < 0 )
+		retstat = tfs_error("tfs_truncate truncate");
     return retstat;
 }
 
@@ -140,10 +174,16 @@ int tfs_open(const char *path, struct fuse_file_info *fi)
    printf("In Open function\n"); 
    tfs_fullpath(fpath, path);
    fd = open(fpath, fi->flags);
-   if (fd < 0)
-        retstat = tfs_error("tfs_open open");
-   else
-        fi->fh = fd;
+   if (!strcmp(path, "/file1"))
+   {
+	retstat = 0;
+   }
+   else {
+   	if (fd < 0)
+        	retstat = tfs_error("tfs_open open");
+   	else
+        	fi->fh = fd;
+   }
    return retstat;
 }
 
@@ -151,7 +191,16 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 {
     printf("In Read function\n");
     int retstat = 0;
-    retstat = pread(fi->fh, buf, size, offset);
+    int fd;
+    char fpath[PATH_MAX];
+    tfs_fullpath(fpath, path);
+    if (strstr(fpath, "_dir") == NULL)
+    {
+	strcat(fpath, "_dir");
+        strcat(fpath, path);
+    }
+    fd = open(fpath, fi->flags);
+    retstat = pread(fd, buf, size, offset);
     if (retstat < 0)
         retstat = tfs_error("tfs_read read");
     return retstat;
@@ -165,15 +214,13 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     char fpath[PATH_MAX];
     tfs_fullpath(fpath, path);
     strcat(fpath, "_dir");
-    //retstat = mkdir(fpath, S_IRWXU|S_IRWXG|S_IRWXO);
-    if (retstat < 0)
-	retstat = tfs_error("tfs_write mkdir");
     strcat(fpath, path);
     int fd;
-    fd = open(fpath, O_CREAT);
+    fd = creat(fpath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     if (fd < 0)
-	retstat = tfs_error("tfs_write open");
-    fi->fh = fd;
+	return retstat = tfs_error("tfs_write open");
+    else
+    	fi->fh = fd;
     retstat = pwrite(fi->fh, buf, size, offset);
     if (retstat < 0)
         retstat = tfs_error("tfs_write pwrite");
@@ -258,13 +305,22 @@ int tfs_unlink(const char *path)
     printf("In unlink function\n");
     int retstat = 0;
     char fpath[PATH_MAX];
-
-    tfs_fullpath(fpath, path);
+    char dpath[PATH_MAX];
+    tfs_fullpath(fpath, path); //for file
+    tfs_fullpath(dpath, path); //For directory
+    if (!strcmp(path, "/file1"))
+    {
+	strcat(fpath, "_dir");
+ 	strcat(dpath, "_dir");
+	strcat(fpath, path);
+    }
 
     retstat = unlink(fpath);
     if (retstat < 0)
         retstat = tfs_error("tfs_unlink unlink");
-
+    retstat = rmdir(dpath); //remove the directory
+    if (retstat < 0)
+        retstat = tfs_error("tfs_unlink unlink");
     return retstat;
 }
 
@@ -426,6 +482,7 @@ struct fuse_operations tfs_oper = {
   .chown = tfs_chown,
   .truncate = tfs_truncate,
   .utime = tfs_utime,
+  .access = tfs_access,
   .open = tfs_open,
   .read = tfs_read,
   .write = tfs_write,
