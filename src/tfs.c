@@ -49,35 +49,41 @@ int tfs_getattr(const char *path, struct stat *statbuf)
     printf("In getattr function\n");
     int retstat = 0;
     char fpath[PATH_MAX];
+    char tmppath[PATH_MAX];
 
     tfs_fullpath(fpath, path);
-    if (!(strcmp(path, "/")) || !(strcmp(path, "/autorun.inf")))
+    tfs_fullpath(tmppath, path);
+    /*check if root directory or autorun.inf file */
+    if ((!strcmp(path, "/")) || (!strcmp(path, "/autorun.inf")))
     {
         printf("Fpath2: %s\n", fpath);
         retstat = lstat(fpath, statbuf);
     }
-    else {
-    	if (!strcmp(path, "/file1"))
+    else { /* All other files */
+    	if (!strcmp(path, "/file1"))//Needs to be replaced by each file name entry from the Data structure
     	{
-        
-		if (strstr(fpath, path) == NULL)
-		{
-        		retstat = lstat(fpath, statbuf);
-			statbuf->st_mode = S_IFREG;
-		}
-		else {
-			strcat(fpath, "_dir");
-			strcat(fpath, path);
-			retstat = lstat(fpath, statbuf);
-		}
-        goto ret;
+		strcat(tmppath, "_dir");
+		//strcat(tmppath, path);		
+		/*handling file write*/
+		retstat = lstat(tmppath, statbuf);
+		statbuf->st_mode = S_IFREG; /* making dir look like a regular file */
     	}
         else {
-    		strcat(fpath, "_dir");
-        	printf("Fpath3: %s\n", fpath);
-        	retstat = lstat(fpath, statbuf);
-    	}
-    }
+    		 if (strstr(fpath, "_dir") != NULL) 
+		 {
+        		printf("Fpath3: %s\n", fpath);
+        		retstat = lstat(fpath, statbuf);
+        		goto ret;
+    		 }
+		else
+	        {
+
+			strcat(fpath, "_dir");
+        		printf("Fpath4: %s\n", fpath);
+        		retstat = lstat(fpath, statbuf);
+		}
+        }  
+   }
 
    #if 0
     if (strstr(fpath, "_dir") != NULL) 
@@ -333,7 +339,8 @@ int tfs_rmdir(const char *path)
     char fpath[PATH_MAX];
 
     tfs_fullpath(fpath, path);
-
+   /*code to check if _dir needs to be appeneded to fpath or just normal directory deletion */
+    strcat(fpath, "_dir");
     retstat = rmdir(fpath);
     if (retstat < 0)
         retstat = tfs_error("tfs_rmdir rmdir");
