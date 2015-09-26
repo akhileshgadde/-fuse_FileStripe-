@@ -77,6 +77,7 @@ int tfs_getattr(const char *path, struct stat *statbuf)
         	printf("Fpath3: %s\n", fpath);
         	retstat = lstat(fpath, statbuf);
     	}
+    }
 
    #if 0
     if (strstr(fpath, "_dir") != NULL) 
