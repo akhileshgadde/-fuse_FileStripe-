@@ -66,7 +66,8 @@ int tfs_getattr(const char *path, struct stat *statbuf)
 		//strcat(tmppath, path);		
 		/*handling file write*/
 		retstat = lstat(tmppath, statbuf);
-		statbuf->st_mode = S_IFREG; /* making dir look like a regular file */
+		if (retstat == 0)
+			statbuf->st_mode = S_IFREG; /* making dir look like a regular file */
     	}
         else {
     		 if (strstr(fpath, "_dir") != NULL) 
@@ -154,7 +155,7 @@ int tfs_truncate(const char *path, off_t newsize)
     {
     	retstat = truncate(fpath, newsize);
     }
-    	if (retstat < 0 )
+   if (retstat < 0 )
 		retstat = tfs_error("tfs_truncate truncate");
     return retstat;
 }
@@ -176,11 +177,11 @@ int tfs_utime(const char *path, struct utimbuf *ubuf)
 int tfs_open(const char *path, struct fuse_file_info *fi)
 {
     int retstat = 0;
-    int fd;
+    int fd = 0;
     char fpath[PATH_MAX];
    printf("In Open function\n"); 
    tfs_fullpath(fpath, path);
-   fd = open(fpath, fi->flags);
+   //fd = open(fpath, fi->flags);
    if (!strcmp(path, "/file1"))
    {
 	retstat = 0;
@@ -210,6 +211,8 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     retstat = pread(fd, buf, size, offset);
     if (retstat < 0)
         retstat = tfs_error("tfs_read read");
+    if (fd > 0)
+	close(fd);
     return retstat;
 }
 
@@ -231,6 +234,11 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     retstat = pwrite(fi->fh, buf, size, offset);
     if (retstat < 0)
         retstat = tfs_error("tfs_write pwrite");
+    else if (fd > 0)
+    {
+	truncate(fpath, size); //Change the size of the file.
+	close(fd);
+    }
     return retstat; 
 }
 
@@ -306,7 +314,7 @@ int tfs_mkdir(const char *path, mode_t mode)
     return retstat;
 }
 
-//Remove a file
+//Remove the directory and file inside it
 int tfs_unlink(const char *path)
 {
     printf("In unlink function\n");
@@ -374,7 +382,8 @@ int tfs_opendir(const char *path, struct fuse_file_info *fi)
     tfs_fullpath(fpath, path);
     if(strcmp(path, "/"))
     { 
-	strcat(fpath, "_dir");
+      	if (strstr(fpath, "_dir") == NULL)
+		strcat(fpath, "_dir");
     }
     dp = opendir(fpath);
     if (dp == NULL)
@@ -389,13 +398,25 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
     printf("In create function\n");
     int retstat = 0;
+    struct stat statbuf;
     char fpath[PATH_MAX];
     tfs_fullpath(fpath, path);
     //if (strstr(fpath, "_dir") == NULL)
     strcat(fpath, "_dir");
     retstat = mkdir(fpath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    if ( lstat(fpath, &statbuf) < 0) //checking if directory is successfully created
+    {
+	printf("Directory creation error\n");
+	retstat = -1;
+    }
     if (retstat < 0)
         retstat = tfs_error("tfs_create creat");
+    #if 0
+    else
+    {
+	closedir((DIR *) (uintptr_t) fi->fh);
+    }
+    #endif
     return retstat;
 }
 
@@ -406,10 +427,7 @@ int tfs_release(const char *path, struct fuse_file_info *fi)
     int retstat = 0;
     // We need to close the file.  Had we allocated any resources
     // (buffers etc) we'd need to free them here as well.
-    retstat = close(fi->fh);
-    if (tfs_fd->bfd != 0)
-    	retstat = close(tfs_fd->bfd);
-    //retstat = close(fi->bfh);
+    //retstat = close(fi->fh);
     return retstat;
 }
 
