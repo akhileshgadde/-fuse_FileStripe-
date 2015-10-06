@@ -66,8 +66,10 @@ int tfs_getattr(const char *path, struct stat *statbuf)
 		//strcat(tmppath, path);		
 		/*handling file write*/
 		retstat = lstat(tmppath, statbuf);
-		if (retstat == 0)
-			statbuf->st_mode = S_IFREG; /* making dir look like a regular file */
+		if (retstat == 0) {
+			statbuf->st_mode &= ~S_IFDIR;
+                        statbuf->st_mode |= S_IFREG; /* making dir look like a regular file */
+                }
     	}
         else {
     		 if (strstr(fpath, "_dir") != NULL) 
@@ -78,7 +80,6 @@ int tfs_getattr(const char *path, struct stat *statbuf)
     		 }
 		else
 	        {
-
 			strcat(fpath, "_dir");
         		printf("Fpath4: %s\n", fpath);
         		retstat = lstat(fpath, statbuf);
