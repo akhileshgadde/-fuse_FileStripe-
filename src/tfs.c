@@ -71,37 +71,34 @@ int tfs_getattr(const char *path, struct stat *statbuf)
                         statbuf->st_mode |= S_IFREG; /* making dir look like a regular file */
                 }
     	}
+
+    		#if 0 
         else {
-    		 if (strstr(fpath, "_dir") != NULL) 
+		if (strstr(fpath, "_dir") != NULL) 
 		 {
         		printf("Fpath3: %s\n", fpath);
         		retstat = lstat(fpath, statbuf);
         		goto ret;
     		 }
 		else
-	        {
+	        //{
 			strcat(fpath, "_dir");
         		printf("Fpath4: %s\n", fpath);
         		retstat = lstat(fpath, statbuf);
 		}
-        }  
-   }
+ 
+   	     }
 
-   #if 0
-    if (strstr(fpath, "_dir") != NULL) 
-    {
-    	printf("Fpath1: %s\n", fpath);
-	retstat = lstat(fpath, statbuf);
-	goto ret;
+		#endif
+	else {
+    		strcat(fpath, "_dir");
+    		printf("Fpath4: %s\n", fpath);
+    		retstat = lstat(fpath, statbuf);
+	}
     }
-    #endif
-    ret:
+
     if (retstat != 0)
         retstat = tfs_error("tfs_getattr lstat");
-    #if 0
-    if (retstat < 0)
-	retstat = 0;
-    #endif
     return retstat;
 }
 
@@ -227,7 +224,7 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     strcat(fpath, "_dir");
     strcat(fpath, path);
     int fd;
-    fd = creat(fpath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    fd = creat(fpath, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | ~S_IXUSR | ~S_IXGRP | ~S_IXOTH);
     if (fd < 0)
 	return retstat = tfs_error("tfs_write open");
     else
@@ -274,6 +271,11 @@ int tfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
     }
     //filler(buf, de->d_name, NULL, 0);
     do {
+	if (!strcmp(de->d_name, "test1_dir")) {
+		strcpy(de->d_name, "test1");
+		strcat(de->d_name, "\0");
+	}
+		
         if (filler(buf, de->d_name, NULL, 0) != 0) {
              printf("Error in Filler\n");
              return -ENOMEM;
