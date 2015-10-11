@@ -15,17 +15,29 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include "uthash.h"
 
 #ifdef HAVE_SYS_XATTR_H
 #include <sys/xattr.h>
 #endif
 
-#define TFS_FD_DATA ((struct fuse_file_desc *) fuse_get_context()->private_data)
+#define TFS_PRIV_DATA ((my_tfs_data *) fuse_get_context()->private_data)
 
-struct fuse_file_desc
+typedef struct file_entries_t
 {
-	int bfd;
-}*tfs_fd;
+	char f_name[PATH_MAX]; /*key*/
+	mode_t f_mode;
+	int file_flag;
+	UT_hash_handle hh; /* makes this structure hashable */
+}file_entries;
+
+typedef struct MY_TFS_DATA
+{
+	char *rootdir;
+	file_entries *head;
+} my_tfs_data;
+
 
 // Give -errno to caller
 static int tfs_error(char *str)
@@ -39,7 +51,7 @@ static int tfs_error(char *str)
 static void tfs_fullpath(char fpath[PATH_MAX], const char *path)
 {
     printf("In fullpath function\n");
-    strcpy(fpath, TFS_DATA->rootdir);
+    strcpy(fpath, TFS_PRIV_DATA->rootdir);
     strncat(fpath, path, PATH_MAX); 
     //printf("tfs_fullpath:%s\n", TFS->rootdir);
 }
@@ -60,8 +72,9 @@ int tfs_getattr(const char *path, struct stat *statbuf)
         retstat = lstat(fpath, statbuf);
     }
     else { /* All other files */
-    	if (!strcmp(path, "/file1"))//Needs to be replaced by each file name entry from the Data structure
+    	if (!strcmp(path, "/test1"))//Needs to be replaced by each file name entry from the Data structure
     	{
+    /*if should check for each entry in hash map*/
 		strcat(tmppath, "_dir");
 		//strcat(tmppath, path);		
 		/*handling file write*/
@@ -70,31 +83,11 @@ int tfs_getattr(const char *path, struct stat *statbuf)
 			statbuf->st_mode &= ~S_IFDIR;
                         statbuf->st_mode |= S_IFREG; /* making dir look like a regular file */
                 }
-    	}
-
-    		#if 0 
-        else {
-		if (strstr(fpath, "_dir") != NULL) 
-		 {
-        		printf("Fpath3: %s\n", fpath);
-        		retstat = lstat(fpath, statbuf);
-        		goto ret;
-    		 }
-		else
-	        //{
-			strcat(fpath, "_dir");
-        		printf("Fpath4: %s\n", fpath);
-        		retstat = lstat(fpath, statbuf);
-		}
- 
-   	     }
-
-		#endif
-	else {
+    	} else {
     		strcat(fpath, "_dir");
     		printf("Fpath4: %s\n", fpath);
     		retstat = lstat(fpath, statbuf);
-	}
+	  }
     }
 
     if (retstat != 0)
@@ -224,7 +217,11 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     strcat(fpath, "_dir");
     strcat(fpath, path);
     int fd;
-    fd = creat(fpath, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | ~S_IXUSR | ~S_IXGRP | ~S_IXOTH);
+	/* This needs to be changed. The magic hashmap is going to store the default
+	 * mode (of the directory). keep the original mode.
+	 */
+    mode_t mode  = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | ~S_IXUSR | ~S_IXGRP | ~S_IXOTH; 
+    fd = creat(fpath, mode);
     if (fd < 0)
 	return retstat = tfs_error("tfs_write open");
     else
@@ -270,11 +267,11 @@ int tfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
         return retstat;
     }
     //filler(buf, de->d_name, NULL, 0);
-    do {
+    do {/*if should check for each entry in hash map*/
 	if (!strcmp(de->d_name, "test1_dir")) {
 		strcpy(de->d_name, "test1");
 		strcat(de->d_name, "\0");
-	}
+	} else continue;
 		
         if (filler(buf, de->d_name, NULL, 0) != 0) {
              printf("Error in Filler\n");
@@ -403,23 +400,35 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     int retstat = 0;
     struct stat statbuf;
     char fpath[PATH_MAX];
+    file_entries *add, *find;    
+
     tfs_fullpath(fpath, path);
-    //if (strstr(fpath, "_dir") == NULL)
+	mode |= S_IXUSR | S_IXGRP | S_IXOTH; /* Add execute permision b/c it's a directory*/
     strcat(fpath, "_dir");
-    retstat = mkdir(fpath, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    retstat = mkdir(fpath, mode);
     if ( lstat(fpath, &statbuf) < 0) //checking if directory is successfully created
     {
 	printf("Directory creation error\n");
 	retstat = -1;
     }
+    else { /*directory is successfully created. So make an entry in hash table */
+	add = (file_entries *) malloc (sizeof (file_entries));
+	if (add == NULL) {
+		printf("Malloc error\n");
+		retstat = -1;
+	}
+	strcpy(add->f_name, fpath);
+	add->f_mode = mode;
+	add->file_flag = 0; /* 0 = file and 1 = directory */
+	HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
+	printf("Added fpath %s into hash table\n", fpath);
+	/*check if entry exists in table */
+	HASH_FIND_STR(TFS_PRIV_DATA->head, fpath, find);
+	if (find != NULL)
+		printf("File found: %s\n", find->f_name);
+    }
     if (retstat < 0)
         retstat = tfs_error("tfs_create creat");
-    #if 0
-    else
-    {
-	closedir((DIR *) (uintptr_t) fi->fh);
-    }
-    #endif
     return retstat;
 }
 
@@ -540,31 +549,27 @@ void tfs_usage()
 int main(int argc, char *argv[])
 {
     int fuse_stat;
-    struct tfs_state *tfs_data;
-    //struct fuse_file_desc *tfs_fd;
+    my_tfs_data *tfs_priv_data;
     if ((argc < 3) || (argv[argc-2][0] == '-') || (argv[argc-1][0] == '-'))
         tfs_usage();
 
-    tfs_data = malloc(sizeof(struct tfs_state));
-    if (tfs_data == NULL) {
-        perror("main calloc: tfs_data");
+    tfs_priv_data = (my_tfs_data *) malloc(sizeof(my_tfs_data));
+    if (tfs_priv_data == NULL) {
+        perror("main calloc: tfs_priv_data");
         abort();
     }
-    tfs_fd = malloc(sizeof(struct fuse_file_desc));
-    if (tfs_fd == NULL) {
-        perror("main calloc: tfs_fd");
-        abort();
-    }
-
-    tfs_data->rootdir = realpath(argv[argc-2], NULL);
+    
+    tfs_priv_data->rootdir = realpath(argv[argc-2], NULL);
+    tfs_priv_data->head = NULL;
     argv[argc-2] = argv[argc-1];
     argv[argc-1] = NULL;
     argc--;
     // turn over control to fuse
     fprintf(stderr, "about to call fuse_main\n");
-    fuse_stat = fuse_main(argc, argv, &tfs_oper, tfs_data);
+    fuse_stat = fuse_main(argc, argv, &tfs_oper, tfs_priv_data);
     fprintf(stderr, "fuse_main returned %d\n", fuse_stat);
-    free(tfs_data);
+    free(tfs_priv_data);
+
 
     return fuse_stat;
 }
