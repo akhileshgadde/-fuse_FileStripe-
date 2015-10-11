@@ -42,7 +42,7 @@ typedef struct MY_TFS_DATA
 // Give -errno to caller
 static int tfs_error(char *str)
 {
-    printf("In Error function\n");
+    //printf("In Error function\n");
     printf("Error: %s\n", strerror(errno));
     int ret = -errno;
     return ret;
@@ -50,18 +50,19 @@ static int tfs_error(char *str)
 
 static void tfs_fullpath(char fpath[PATH_MAX], const char *path)
 {
-    printf("In fullpath function\n");
+    //printf("In fullpath function\n");
     strcpy(fpath, TFS_PRIV_DATA->rootdir);
     strncat(fpath, path, PATH_MAX); 
-    //printf("tfs_fullpath:%s\n", TFS->rootdir);
+    //printf("TFS_FULLPATH(): %s\n", fpath);
 }
 
 int tfs_getattr(const char *path, struct stat *statbuf)
 {
-    printf("In getattr function\n");
+    //printf("In getattr function\n");
     int retstat = 0;
     char fpath[PATH_MAX];
     char tmppath[PATH_MAX];
+    file_entries *find;
 
     tfs_fullpath(fpath, path);
     tfs_fullpath(tmppath, path);
@@ -72,10 +73,12 @@ int tfs_getattr(const char *path, struct stat *statbuf)
         retstat = lstat(fpath, statbuf);
     }
     else { /* All other files */
-    	if (!strcmp(path, "/test1"))//Needs to be replaced by each file name entry from the Data structure
+	strcat(tmppath, "_dir");
+	//printf("HASHMAP, getattr(): checking for %s\n\n", tmppath);
+	HASH_FIND_STR(TFS_PRIV_DATA->head, tmppath, find);
+	if (find != NULL)
     	{
     /*if should check for each entry in hash map*/
-		strcat(tmppath, "_dir");
 		//strcat(tmppath, path);		
 		/*handling file write*/
 		retstat = lstat(tmppath, statbuf);
@@ -84,6 +87,7 @@ int tfs_getattr(const char *path, struct stat *statbuf)
                         statbuf->st_mode |= S_IFREG; /* making dir look like a regular file */
                 }
     	} else {
+		printf("HASH: find is NULL\n");
     		strcat(fpath, "_dir");
     		printf("Fpath4: %s\n", fpath);
     		retstat = lstat(fpath, statbuf);
@@ -125,7 +129,7 @@ int tfs_chmod(const char *path, mode_t mode)
 /* Change the owner and group of a file */
 int tfs_chown(const char *path, uid_t uid, gid_t gid)
 {
-    printf("In chown function\n");
+    //printf("In chown function\n");
     int retstat = 0;
     char fpath[PATH_MAX];
     tfs_fullpath(fpath, path);
@@ -213,14 +217,25 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     printf("In write function\n");
     int retstat = 0;
     char fpath[PATH_MAX];
+    char dpath[PATH_MAX];
     tfs_fullpath(fpath, path);
     strcat(fpath, "_dir");
+    strcpy(dpath, fpath);
     strcat(fpath, path);
+    file_entries *find;
     int fd;
+    mode_t mode;
 	/* This needs to be changed. The magic hashmap is going to store the default
 	 * mode (of the directory). keep the original mode.
 	 */
-    mode_t mode  = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | ~S_IXUSR | ~S_IXGRP | ~S_IXOTH; 
+    HASH_FIND_STR(TFS_PRIV_DATA->head, dpath, find);
+    if (find != NULL) /*found entry in hash map */
+    {
+	printf("HASHMAP: Found entry and setting mode\n");
+	mode = find->f_mode;
+    } else {
+    	mode  = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | ~S_IXUSR | ~S_IXGRP | ~S_IXOTH; 
+    }
     fd = creat(fpath, mode);
     if (fd < 0)
 	return retstat = tfs_error("tfs_write open");
@@ -257,7 +272,11 @@ int tfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
     printf("In Readdir function\n");
     int retstat = 0;
     DIR *dp;
+    //int i;
     struct dirent *de;
+    file_entries *find;
+    char tmp_path[PATH_MAX];
+    char fpath[PATH_MAX], *path_str;
 
     dp = (DIR *) (uintptr_t) fi->fh;
 
@@ -266,12 +285,22 @@ int tfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
         retstat = tfs_error("tfs_readdir readdir");
         return retstat;
     }
+    printf("\nREADDIR: Path %s\n\n", path);
     //filler(buf, de->d_name, NULL, 0);
     do {/*if should check for each entry in hash map*/
-	if (!strcmp(de->d_name, "test1_dir")) {
-		strcpy(de->d_name, "test1");
-		strcat(de->d_name, "\0");
-	} else continue;
+	strcpy(tmp_path, "/");
+	strcat(tmp_path, de->d_name);
+	tfs_fullpath(fpath, tmp_path);
+	HASH_FIND_STR(TFS_PRIV_DATA->head,fpath, find);
+	if (find != NULL) { /* entry found in hash */
+		printf("\nHASH: Found entry in hash %s\n\n", find->f_name);
+		if ((path_str = strstr(de->d_name, "_dir")) != NULL) {
+			
+ 			*path_str = '\0';
+		}
+		printf("de->d_name after ptr op: %s\n", de->d_name);
+		printf(" after ptr op: %s\n", de->d_name);
+	}
 		
         if (filler(buf, de->d_name, NULL, 0) != 0) {
              printf("Error in Filler\n");
@@ -400,7 +429,7 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     int retstat = 0;
     struct stat statbuf;
     char fpath[PATH_MAX];
-    file_entries *add, *find;    
+    file_entries *add;// *find;    
 
     tfs_fullpath(fpath, path);
 	mode |= S_IXUSR | S_IXGRP | S_IXOTH; /* Add execute permision b/c it's a directory*/
@@ -422,10 +451,15 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 	add->file_flag = 0; /* 0 = file and 1 = directory */
 	HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
 	printf("Added fpath %s into hash table\n", fpath);
+	#if 0
 	/*check if entry exists in table */
 	HASH_FIND_STR(TFS_PRIV_DATA->head, fpath, find);
-	if (find != NULL)
-		printf("File found: %s\n", find->f_name);
+	if (find != NULL) {
+		printf("HASH: File found: %s\n", find->f_name);
+		if (S_ISREG(find->f_mode))
+			printf("HASH: Regular file:\n");
+	}
+	#endif
     }
     if (retstat < 0)
         retstat = tfs_error("tfs_create creat");
@@ -439,8 +473,10 @@ int tfs_release(const char *path, struct fuse_file_info *fi)
     int retstat = 0;
     // We need to close the file.  Had we allocated any resources
     // (buffers etc) we'd need to free them here as well.
-    //retstat = close(fi->fh);
-    return retstat;
+    //if ((retstat = close(fi->fh)))
+    	return retstat;
+    //else
+//	return 0;
 }
 
 //simialar to release but for directories
