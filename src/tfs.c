@@ -171,22 +171,50 @@ int tfs_utime(const char *path, struct utimbuf *ubuf)
 
 int tfs_open(const char *path, struct fuse_file_info *fi)
 {
-    int retstat = 0;
-    int fd = 0;
-    char fpath[PATH_MAX];
+   int retstat = 0;
+   int fd = 0;
+   int i;
+   file_entries *find;
+   char fpath[PATH_MAX];
+   char dpath[PATH_MAX];
+   char tmp_path[PATH_MAX];
+   char tmp_str[10];
+   file_entries *file_find;
    printf("In Open function\n"); 
    tfs_fullpath(fpath, path);
-   //fd = open(fpath, fi->flags);
-   if (!strcmp(path, "/file1"))
-   {
-	retstat = 0;
+   strcpy(dpath, fpath);
+   strcat(dpath, "_dir");
+   strcpy(tmp_path, dpath);
+   strcat(tmp_path, path);
+   HASH_FIND_STR(TFS_PRIV_DATA->head, dpath, find);
+   if (find != NULL) {
+	printf("HASH, open(): Found dir entry in hashmap\n");
+	strcat(dpath,path);
+	for (i=0; i < 1000; i++)
+	{
+		strcpy(dpath, tmp_path);
+		printf("OPEN: After copying from tmp_path: %s\n", dpath);
+		sprintf(tmp_str, "%d", i);
+		strcat(dpath, tmp_str);
+		printf("HASH, open(): comparing %s\n", dpath);
+		HASH_FIND_STR(TFS_PRIV_DATA->head, dpath, file_find);
+                if (file_find != NULL) { /* No entry found for tmp_path */
+                        break;
+                }
+
+	}
+	printf("OPEN: Path before open: %s\n", dpath);
+   	fd = open(dpath, fi->flags);
    }
    else {
-   	if (fd < 0)
-        	retstat = tfs_error("tfs_open open");
-   	else
-        	fi->fh = fd;
+	printf("HASH, open(): No entry found\n");
+	fd = open(fpath, fi->flags);
    }
+   
+   if (fd < 0)
+       	retstat = tfs_error("tfs_open open");
+   else
+       	fi->fh = fd;
    return retstat;
 }
 
@@ -194,6 +222,7 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 {
     printf("In Read function\n");
     int retstat = 0;
+    #if 0
     int fd;
     char fpath[PATH_MAX];
     tfs_fullpath(fpath, path);
@@ -203,11 +232,10 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
         strcat(fpath, path);
     }
     fd = open(fpath, fi->flags);
-    retstat = pread(fd, buf, size, offset);
+    #endif
+    retstat = pread(fi->fh, buf, size, offset);
     if (retstat < 0)
         retstat = tfs_error("tfs_read read");
-    if (fd > 0)
-	close(fd);
     return retstat;
 }
 
@@ -216,14 +244,19 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
 {
     printf("In write function\n");
     int retstat = 0;
+    int i;
     char fpath[PATH_MAX];
     char dpath[PATH_MAX];
+    char tmp_path[PATH_MAX];
+    char tmp_str[10];
     tfs_fullpath(fpath, path);
     strcat(fpath, "_dir");
     strcpy(dpath, fpath);
     strcat(fpath, path);
-    file_entries *find;
+    strcpy(tmp_path, fpath);
+    file_entries *find, *file_find, *add;
     int fd;
+    int file_found_flag = 1;
     mode_t mode;
 	/* This needs to be changed. The magic hashmap is going to store the default
 	 * mode (of the directory). keep the original mode.
@@ -231,17 +264,49 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     HASH_FIND_STR(TFS_PRIV_DATA->head, dpath, find);
     if (find != NULL) /*found entry in hash map */
     {
-	printf("HASHMAP: Found entry and setting mode\n");
 	mode = find->f_mode;
+	printf("HASHMAP, write(): Found entry and setting mode\n");
+	for (i = 0; i < 1000; i++) /*creating a new part of file*/
+	{
+		strcpy(fpath, tmp_path);
+		printf("WRITE: PATH after copy fropm tmp_str: %s\n", fpath);
+		sprintf(tmp_str, "%d", i);
+		strcat(fpath, tmp_str);
+		printf("HASH, write(): comparing %s\n", fpath);
+		HASH_FIND_STR(TFS_PRIV_DATA->head, fpath, file_find);
+		if (file_find == NULL) { /* No entry found for tmp_path */
+			file_found_flag = 0;
+			break;
+		}
+	}
     } else {
     	mode  = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | ~S_IXUSR | ~S_IXGRP | ~S_IXOTH; 
     }
+    printf("WRITE(): path before creat: %s\n", fpath);
     fd = creat(fpath, mode);
     if (fd < 0)
 	return retstat = tfs_error("tfs_write open");
-    else
-    	fi->fh = fd;
-    retstat = pwrite(fi->fh, buf, size, offset);
+    else { /*creation sucessful and store in hashmap */
+	if (file_found_flag == 0) {
+		add = (file_entries *) malloc (sizeof (file_entries));
+	        if (add == NULL) {
+        	        printf("Malloc error\n");
+                	retstat = -1;
+			goto endReturn;
+        	}
+
+		add->f_mode = mode;
+		add->file_flag = 1; /* Regular File */
+		strcpy(add->f_name, fpath);
+		printf("HASH, write(): Adding entry %s to hash\n",add->f_name);
+    		HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
+	}
+    }
+    printf("TFS_WRITE: writing buf: %s to file\n", buf);
+    if (offset != 0)
+	offset = 0;
+    printf("TFS_WRITE: Offset: %jd\n", offset);
+    retstat = pwrite(fd, buf, size, offset);
     if (retstat < 0)
         retstat = tfs_error("tfs_write pwrite");
     else if (fd > 0)
@@ -249,6 +314,7 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
 	truncate(fpath, size); //Change the size of the file.
 	close(fd);
     }
+endReturn:
     return retstat; 
 }
 
@@ -473,10 +539,8 @@ int tfs_release(const char *path, struct fuse_file_info *fi)
     int retstat = 0;
     // We need to close the file.  Had we allocated any resources
     // (buffers etc) we'd need to free them here as well.
-    //if ((retstat = close(fi->fh)))
-    	return retstat;
-    //else
-//	return 0;
+    retstat = close(fi->fh);
+    return retstat;
 }
 
 //simialar to release but for directories
