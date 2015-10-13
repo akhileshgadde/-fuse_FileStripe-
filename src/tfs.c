@@ -83,8 +83,11 @@ int tfs_getattr(const char *path, struct stat *statbuf)
 		/*handling file write*/
 		retstat = lstat(tmppath, statbuf);
 		if (retstat == 0) {
+			#if 0
 			statbuf->st_mode &= ~S_IFDIR;
                         statbuf->st_mode |= S_IFREG; /* making dir look like a regular file */
+			#endif	
+			statbuf->st_mode = find->f_mode;
                 }
     	} else {
 		printf("HASH: find is NULL\n");
@@ -198,7 +201,7 @@ int tfs_open(const char *path, struct fuse_file_info *fi)
 		strcat(dpath, tmp_str);
 		printf("HASH, open(): comparing %s\n", dpath);
 		HASH_FIND_STR(TFS_PRIV_DATA->head, dpath, file_find);
-                if (file_find != NULL) { /* No entry found for tmp_path */
+                if (file_find == NULL) { /* No entry found for tmp_path */
                         break;
                 }
 
@@ -495,12 +498,12 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     int retstat = 0;
     struct stat statbuf;
     char fpath[PATH_MAX];
-    file_entries *add;// *find;    
-
+    file_entries *add;// *find;
+    mode_t d_mode;
     tfs_fullpath(fpath, path);
-	mode |= S_IXUSR | S_IXGRP | S_IXOTH; /* Add execute permision b/c it's a directory*/
+    d_mode = mode | S_IXUSR | S_IXGRP | S_IXOTH; /* Add execute permision b/c it's a directory*/
     strcat(fpath, "_dir");
-    retstat = mkdir(fpath, mode);
+    retstat = mkdir(fpath, d_mode);
     if ( lstat(fpath, &statbuf) < 0) //checking if directory is successfully created
     {
 	printf("Directory creation error\n");
