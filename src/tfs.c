@@ -10,13 +10,14 @@
 #include <fuse.h>
 #include <libgen.h>
 #include <limits.h>
-#include <stdlib.h>
-#include <stdio.h>
+//#include <stdlib.h>
+//#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/types.h>
+//#include <sys/types.h>
 #include <sys/stat.h>
 #include "uthash.h"
+#include "getline.h"
 
 #ifdef HAVE_SYS_XATTR_H
 #include <sys/xattr.h>
@@ -30,12 +31,14 @@ typedef struct file_entries_t
 	mode_t f_mode;
 	int file_flag; /* 1 for file and 0 for directory */
 	UT_hash_handle hh; /* makes this structure hashable */
-}file_entries;
+} file_entries;
 
 typedef struct MY_TFS_DATA
 {
 	char *rootdir;
 	file_entries *head;
+	int init_flag;
+	char *init_file;
 } my_tfs_data;
 
 
@@ -56,6 +59,43 @@ static void tfs_fullpath(char fpath[PATH_MAX], const char *path)
     //printf("TFS_FULLPATH(): %s\n", fpath);
 }
 
+/* add the passed values to the HASHMAP */
+void addtoHashmap(int file_flag, mode_t mode, char *f_name)
+{
+	file_entries *add = (file_entries *) malloc (sizeof (file_entries));
+    if (add == NULL) {
+    	printf("Malloc error\n");
+        return;
+	}
+	add->f_mode = mode;
+	add->file_flag = file_flag;
+	strcpy(add->f_name, f_name);
+	HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
+}	
+
+/* Read line by line and store it in the respective fields */
+void readFile(char *file)
+{
+	char f_name[PATH_MAX];
+	mode_t mode;
+	int file_flag;
+	ssize_t read;
+	size_t len = 0;
+	char *line = NULL;
+	FILE *fd = fopen(file, "r");
+	if (fd == NULL) {
+        printf("File open error\n");
+        return;
+	}
+	while ((read = getline(&line, &len, fd)) != -1) {
+    		sscanf(line, "%d\t%07o\t%s",&file_flag, &mode, f_name);
+		addtoHashmap(file_flag, mode, f_name);
+    	}
+	if (line)
+		free(line);
+	fclose(fd);
+}
+
 int tfs_getattr(const char *path, struct stat *statbuf)
 {
     //printf("In getattr function\n");
@@ -63,9 +103,13 @@ int tfs_getattr(const char *path, struct stat *statbuf)
     char fpath[PATH_MAX];
     char tmppath[PATH_MAX];
     file_entries *find;
-
-    tfs_fullpath(fpath, path);
-    tfs_fullpath(tmppath, path);
+	/* check the init_flag and populate the HASH_MAP from the file */
+	if (TFS_PRIV_DATA->init_flag == 0) {
+		readFile(TFS_PRIV_DATA->init_file);
+	}
+    
+	tfs_fullpath(fpath, path);
+    strcpy(tmppath, fpath);
     /*check if root directory or autorun.inf file */
     if ((!strcmp(path, "/")) || (!strcmp(path, "/autorun.inf")))
     {
@@ -677,6 +721,15 @@ int main(int argc, char *argv[])
     
     tfs_priv_data->rootdir = realpath(argv[argc-2], NULL);
     tfs_priv_data->head = NULL;
+	tfs_priv_data->init_flag = 0;
+	#if 1
+	tfs_priv_data->init_file = (char *) malloc (strlen("init_file.txt") + 1);
+	if (tfs_priv_data->init_file == NULL) {
+		printf("Malloc() error\n");
+		abort();
+	}
+	strcpy(tfs_priv_data->init_file, "init_file.txt");
+	#endif
     argv[argc-2] = argv[argc-1];
     argv[argc-1] = NULL;
     argc--;
@@ -685,7 +738,5 @@ int main(int argc, char *argv[])
     fuse_stat = fuse_main(argc, argv, &tfs_oper, tfs_priv_data);
     fprintf(stderr, "fuse_main returned %d\n", fuse_stat);
     free(tfs_priv_data);
-
-
     return fuse_stat;
 }
