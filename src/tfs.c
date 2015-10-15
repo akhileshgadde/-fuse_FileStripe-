@@ -96,6 +96,18 @@ void readFile(char *file)
 	fclose(fd);
 }
 
+/* write the present added hashmap entry into a file */
+void writetoFile(file_entries *add)
+{
+	FILE *fd = fopen(TFS_PRIV_DATA->init_file, "a");
+	if (fd == NULL) {
+  		printf("File open error\n");
+        return;
+    }
+	fprintf(fd, "%d\t%07o\t%s\n", add->file_flag, add->f_mode, add->f_name);
+	fclose(fd);
+}
+
 int tfs_getattr(const char *path, struct stat *statbuf)
 {
     //printf("In getattr function\n");
@@ -106,6 +118,7 @@ int tfs_getattr(const char *path, struct stat *statbuf)
 	/* check the init_flag and populate the HASH_MAP from the file */
 	if (TFS_PRIV_DATA->init_flag == 0) {
 		readFile(TFS_PRIV_DATA->init_file);
+		TFS_PRIV_DATA->init_flag = 1;
 	}
     
 	tfs_fullpath(fpath, path);
@@ -333,21 +346,22 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     if (fd < 0)
 	return retstat = tfs_error("tfs_write open");
     else { /*creation sucessful and store in hashmap */
-	if (file_found_flag == 0) {
-		add = (file_entries *) malloc (sizeof (file_entries));
-	        if (add == NULL) {
+		if (file_found_flag == 0) {
+			add = (file_entries *) malloc (sizeof (file_entries));
+	        	if (add == NULL) {
         	        printf("Malloc error\n");
                 	retstat = -1;
-			goto endReturn;
-        	}
+					goto endReturn;
+        		}
 
-		add->f_mode = mode;
-		add->file_flag = 1; /* Regular File */
-		strcpy(add->f_name, fpath);
-		printf("HASH, write(): Adding entry %s to hash\n",add->f_name);
-		printf("TFS_WRITE(), mode_t: %o\n", add->f_mode);
+			add->f_mode = mode;
+			add->file_flag = 1; /* Regular File */
+			strcpy(add->f_name, fpath);
+			printf("HASH, write(): Adding entry %s to hash\n",add->f_name);
+			printf("TFS_WRITE(), mode_t: %o\n", add->f_mode);
     		HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
-	}
+			writetoFile(add);
+		}
     }
     printf("TFS_WRITE: writing buf: %s to file\n", buf);
     if (offset != 0)
@@ -465,6 +479,7 @@ int tfs_mkdir(const char *path, mode_t mode)
 		strcpy(add->f_name, fpath);
 		printf("HASH, mkdir(): Adding directory %s to hash table\n",add->f_name);
 		HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
+		writetoFile(add);
 	}
     return retstat;
 }
@@ -576,6 +591,7 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 	add->f_mode = mode;
 	add->file_flag = 1; /* 1 = file and 0 = directory */
 	HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
+	writetoFile(add);
 	printf("Added fpath %s into hash table\n", fpath);
 	#if 0
 	/*check if entry exists in table */
