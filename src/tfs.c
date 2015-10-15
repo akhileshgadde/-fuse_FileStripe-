@@ -28,7 +28,7 @@ typedef struct file_entries_t
 {
 	char f_name[PATH_MAX]; /*key*/
 	mode_t f_mode;
-	int file_flag;
+	int file_flag; /* 1 for file and 0 for directory */
 	UT_hash_handle hh; /* makes this structure hashable */
 }file_entries;
 
@@ -82,7 +82,7 @@ int tfs_getattr(const char *path, struct stat *statbuf)
 		//strcat(tmppath, path);		
 		/*handling file write*/
 		retstat = lstat(tmppath, statbuf);
-		if (retstat == 0) {
+		if ((retstat == 0) && (find->file_flag == 1)) {
 			#if 0
 			statbuf->st_mode &= ~S_IFDIR;
                         statbuf->st_mode |= S_IFREG; /* making dir look like a regular file */
@@ -91,7 +91,6 @@ int tfs_getattr(const char *path, struct stat *statbuf)
                 }
     	} else {
 		printf("HASH: find is NULL\n");
-    		strcat(fpath, "_dir");
     		printf("Fpath4: %s\n", fpath);
     		retstat = lstat(fpath, statbuf);
 	  }
@@ -403,12 +402,25 @@ int tfs_mkdir(const char *path, mode_t mode)
 {
     printf("In mkdir function\n");
     int retstat = 0;
+	file_entries *add;
     char fpath[PATH_MAX];
     tfs_fullpath(fpath, path);
     strcat(fpath, "_dir");
     retstat = mkdir(fpath, mode);
     if (retstat < 0)
         retstat = tfs_error("tfs_mkdir mkdir");
+	else {
+		add = (file_entries *) malloc (sizeof (file_entries));
+        if (add == NULL) {
+        	printf("Malloc error\n");
+			retstat = -ENOMEM;
+		}
+		add->f_mode = mode;
+		add->file_flag = 0; /* Directory */
+		strcpy(add->f_name, fpath);
+		printf("HASH, mkdir(): Adding directory %s to hash table\n",add->f_name);
+		HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
+	}
     return retstat;
 }
 
