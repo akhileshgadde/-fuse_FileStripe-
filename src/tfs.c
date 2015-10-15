@@ -82,7 +82,7 @@ int tfs_getattr(const char *path, struct stat *statbuf)
 		//strcat(tmppath, path);		
 		/*handling file write*/
 		retstat = lstat(tmppath, statbuf);
-		if ((retstat == 0) && (find->file_flag == 1)) {
+		if ((retstat == 0) && (find->file_flag == 1)) { //1 = regular file
 			#if 0
 			statbuf->st_mode &= ~S_IFDIR;
                         statbuf->st_mode |= S_IFREG; /* making dir look like a regular file */
@@ -301,6 +301,7 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
 		add->file_flag = 1; /* Regular File */
 		strcpy(add->f_name, fpath);
 		printf("HASH, write(): Adding entry %s to hash\n",add->f_name);
+		printf("TFS_WRITE(), mode_t: %o\n", add->f_mode);
     		HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
 	}
     }
@@ -529,7 +530,7 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 	}
 	strcpy(add->f_name, fpath);
 	add->f_mode = mode;
-	add->file_flag = 0; /* 0 = file and 1 = directory */
+	add->file_flag = 1; /* 1 = file and 0 = directory */
 	HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
 	printf("Added fpath %s into hash table\n", fpath);
 	#if 0
