@@ -29,7 +29,7 @@ typedef struct file_entries_t
 {
 	char f_name[PATH_MAX]; /*key*/
 	mode_t f_mode;
-	int file_flag; /* 1 for file and 0 for directory */
+	int file_flag; /* 1 for directories we create and 0 for normal directories */
 	UT_hash_handle hh; /* makes this structure hashable */
 } file_entries;
 
@@ -329,7 +329,7 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
 	{
 		strcpy(fpath, tmp_path);
 		printf("WRITE: PATH after copy fropm tmp_str: %s\n", fpath);
-		sprintf(tmp_str, "%d", i);
+		sprintf(tmp_str, "%c%d", '.', i);
 		strcat(fpath, tmp_str);
 		printf("HASH, write(): comparing %s\n", fpath);
 		HASH_FIND_STR(TFS_PRIV_DATA->head, fpath, file_find);
@@ -589,7 +589,7 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 	}
 	strcpy(add->f_name, fpath);
 	add->f_mode = mode;
-	add->file_flag = 1; /* 1 = file and 0 = directory */
+	add->file_flag = 1; /* 1 for directories we create */
 	HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
 	writetoFile(add);
 	printf("Added fpath %s into hash table\n", fpath);
