@@ -60,22 +60,23 @@ static void tfs_fullpath(char fpath[PATH_MAX], const char *path)
 }
 
 /* add the passed values to the HASHMAP */
-void addtoHashmap(int file_flag, mode_t mode, char *f_name)
+void addtoHashmap(int file_flag, mode_t mode, char *f_name, file_entries **head)
 {
 	file_entries *add = (file_entries *) malloc (sizeof (file_entries));
-    if (add == NULL) {
+	if (add == NULL) {
     	printf("Malloc error\n");
         return;
 	}
 	add->f_mode = mode;
 	add->file_flag = file_flag;
 	strcpy(add->f_name, f_name);
-	HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
+	HASH_ADD_STR(*head, f_name, add);
 }	
 
 /* Read line by line and store it in the respective fields */
-void readFile(char *file)
+void readFile(char *file, file_entries **head)
 {
+	printf("inside readFile, init_file: %s\n", file);
 	char f_name[PATH_MAX];
 	mode_t mode;
 	int file_flag;
@@ -89,7 +90,7 @@ void readFile(char *file)
 	}
 	while ((read = getline(&line, &len, fd)) != -1) {
     		sscanf(line, "%d\t%07o\t%s",&file_flag, &mode, f_name);
-		addtoHashmap(file_flag, mode, f_name);
+		addtoHashmap(file_flag, mode, f_name, head);
     	}
 	if (line)
 		free(line);
@@ -97,9 +98,9 @@ void readFile(char *file)
 }
 
 /* write the present added hashmap entry into a file */
-void writetoFile(file_entries *add)
+void writetoFile(file_entries *add, char *file)
 {
-	FILE *fd = fopen(TFS_PRIV_DATA->init_file, "a");
+	FILE *fd = fopen(file, "a");
 	if (fd == NULL) {
   		printf("File open error\n");
         return;
@@ -115,11 +116,13 @@ int tfs_getattr(const char *path, struct stat *statbuf)
     char fpath[PATH_MAX];
     char tmppath[PATH_MAX];
     file_entries *find;
+	#if 0
 	/* check the init_flag and populate the HASH_MAP from the file */
 	if (TFS_PRIV_DATA->init_flag == 0) {
 		readFile(TFS_PRIV_DATA->init_file);
 		TFS_PRIV_DATA->init_flag = 1;
 	}
+	#endif
     
 	tfs_fullpath(fpath, path);
     strcpy(tmppath, fpath);
@@ -203,14 +206,16 @@ int tfs_truncate(const char *path, off_t newsize)
 {
     printf("In truncate function\n");
     int retstat = 0;
+    #if 0
     char fpath[PATH_MAX];
     tfs_fullpath(fpath, path);
     if (strcmp(path, "/file1"))
     {
     	retstat = truncate(fpath, newsize);
     }
-   if (retstat < 0 )
+    if (retstat < 0 )
 		retstat = tfs_error("tfs_truncate truncate");
+    #endif
     return retstat;
 }
 
@@ -231,6 +236,7 @@ int tfs_utime(const char *path, struct utimbuf *ubuf)
 int tfs_open(const char *path, struct fuse_file_info *fi)
 {
    int retstat = 0;
+#if 0
    int fd = 0;
    int i;
    file_entries *find;
@@ -274,6 +280,8 @@ int tfs_open(const char *path, struct fuse_file_info *fi)
        	retstat = tfs_error("tfs_open open");
    else
        	fi->fh = fd;
+#endif
+   retstat = 0;
    return retstat;
 }
 
@@ -281,7 +289,7 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 {
     printf("In Read function\n");
     int retstat = 0;
-    #if 0
+    #if 1
     int fd;
     char fpath[PATH_MAX];
     tfs_fullpath(fpath, path);
@@ -289,10 +297,14 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     {
 	strcat(fpath, "_dir");
         strcat(fpath, path);
+	strcat(fpath, ".");
+	strcat(fpath, "0");
     }
     fd = open(fpath, fi->flags);
     #endif
-    retstat = pread(fi->fh, buf, size, offset);
+    printf("TFS_READ: fpath before pread: %s\n", fpath);
+    printf("TFS_READ: fd before pread: %d\n", fd);
+    retstat = pread(fd, buf, size, offset);
     if (retstat < 0)
         retstat = tfs_error("tfs_read read");
     return retstat;
@@ -303,7 +315,7 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
 {
     printf("In write function\n");
     int retstat = 0;
-    int i;
+    //int i;
     char fpath[PATH_MAX];
     char dpath[PATH_MAX];
     char tmp_path[PATH_MAX];
@@ -313,7 +325,7 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     strcpy(dpath, fpath);
     strcat(fpath, path);
     strcpy(tmp_path, fpath);
-    file_entries *find, *file_find, *add;
+    file_entries *find, *add; //*file_find;
     int fd;
     int file_found_flag = 1;
     mode_t mode;
@@ -325,6 +337,7 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     {
 	mode = find->f_mode;
 	printf("HASHMAP, write(): Found entry and setting mode\n");
+	#if 0
 	for (i = 0; i < 1000; i++) /*creating a new part of file*/
 	{
 		strcpy(fpath, tmp_path);
@@ -338,6 +351,10 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
 			break;
 		}
 	}
+	#endif
+	strcpy(fpath, tmp_path);
+	sprintf(tmp_str, "%c%d", '.', 0);
+        strcat(fpath, tmp_str);
     } else {
     	mode  = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | ~S_IXUSR | ~S_IXGRP | ~S_IXOTH; 
     }
@@ -345,7 +362,7 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     fd = creat(fpath, mode);
     if (fd < 0)
 	return retstat = tfs_error("tfs_write open");
-    else { /*creation sucessful and store in hashmap */
+    else { /*creation sucessful and store in hashmap - no needed at this point*/
 		if (file_found_flag == 0) {
 			add = (file_entries *) malloc (sizeof (file_entries));
 	        	if (add == NULL) {
@@ -353,14 +370,13 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
                 	retstat = -1;
 					goto endReturn;
         		}
-
 			add->f_mode = mode;
 			add->file_flag = 1; /* Regular File */
 			strcpy(add->f_name, fpath);
 			printf("HASH, write(): Adding entry %s to hash\n",add->f_name);
 			printf("TFS_WRITE(), mode_t: %o\n", add->f_mode);
-    		HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
-			writetoFile(add);
+    			HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
+			//writetoFile(add);
 		}
     }
     printf("TFS_WRITE: writing buf: %s to file\n", buf);
@@ -475,11 +491,11 @@ int tfs_mkdir(const char *path, mode_t mode)
 			retstat = -ENOMEM;
 		}
 		add->f_mode = mode;
-		add->file_flag = 0; /* Directory */
+		add->file_flag = 0; /* Normal Directory */
 		strcpy(add->f_name, fpath);
 		printf("HASH, mkdir(): Adding directory %s to hash table\n",add->f_name);
 		HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
-		writetoFile(add);
+		//writetoFile(add);
 	}
     return retstat;
 }
@@ -509,7 +525,7 @@ int tfs_unlink(const char *path)
     return retstat;
 }
 
-/** Remove a directory */
+/* Remove a directory */
 int tfs_rmdir(const char *path)
 {
     printf("In rmdir function\n");
@@ -591,7 +607,7 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 	add->f_mode = mode;
 	add->file_flag = 1; /* 1 for directories we create */
 	HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
-	writetoFile(add);
+	//writetoFile(add);
 	printf("Added fpath %s into hash table\n", fpath);
 	#if 0
 	/*check if entry exists in table */
@@ -615,7 +631,7 @@ int tfs_release(const char *path, struct fuse_file_info *fi)
     int retstat = 0;
     // We need to close the file.  Had we allocated any resources
     // (buffers etc) we'd need to free them here as well.
-    retstat = close(fi->fh);
+//    retstat = close(fi->fh);
     return retstat;
 }
 
@@ -726,6 +742,7 @@ int main(int argc, char *argv[])
 {
     int fuse_stat;
     my_tfs_data *tfs_priv_data;
+    file_entries *iterator;
     if ((argc < 3) || (argv[argc-2][0] == '-') || (argv[argc-1][0] == '-'))
         tfs_usage();
 
@@ -749,9 +766,21 @@ int main(int argc, char *argv[])
     argv[argc-2] = argv[argc-1];
     argv[argc-1] = NULL;
     argc--;
-    // turn over control to fuse
+	/* Read from init_file if it exists */
+    readFile(tfs_priv_data->init_file, &tfs_priv_data->head);
+	// turn over control to fuse
     fprintf(stderr, "about to call fuse_main\n");
-    fuse_stat = fuse_main(argc, argv, &tfs_oper, tfs_priv_data);
+	fuse_stat = fuse_main(argc, argv, &tfs_oper, tfs_priv_data);
+	if (tfs_priv_data->head != NULL)
+		printf("Head: %p\n", tfs_priv_data->head);
+	//writetoFile(tfs_priv_data->head);
+	#if 1
+	/* write to init_file all entries in hashmap before exiting the program */
+	for (iterator = tfs_priv_data->head; iterator != NULL; iterator = (file_entries *) (iterator->hh.next)) 
+	{
+		writetoFile(iterator, tfs_priv_data->init_file);		
+	}	
+	#endif
     fprintf(stderr, "fuse_main returned %d\n", fuse_stat);
     free(tfs_priv_data);
     return fuse_stat;
