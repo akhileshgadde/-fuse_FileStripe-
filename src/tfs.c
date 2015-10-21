@@ -29,7 +29,7 @@ typedef struct file_entries_t
 {
 	char f_name[PATH_MAX]; /*key*/
 	mode_t f_mode;
-	int file_flag; /* 1 for directories we create and 0 for normal directories */
+	//int file_flag; /* 1 for directories we create and 0 for normal directories */
 	UT_hash_handle hh; /* makes this structure hashable */
 } file_entries;
 
@@ -60,7 +60,7 @@ static void tfs_fullpath(char fpath[PATH_MAX], const char *path)
 }
 
 /* add the passed values to the HASHMAP */
-void addtoHashmap(int file_flag, mode_t mode, char *f_name, file_entries **head)
+void addtoHashmap(mode_t mode, char *f_name, file_entries **head)
 {
 	file_entries *add = (file_entries *) malloc (sizeof (file_entries));
 	if (add == NULL) {
@@ -68,10 +68,20 @@ void addtoHashmap(int file_flag, mode_t mode, char *f_name, file_entries **head)
         return;
 	}
 	add->f_mode = mode;
-	add->file_flag = file_flag;
+	//add->file_flag = file_flag;
 	strcpy(add->f_name, f_name);
 	HASH_ADD_STR(*head, f_name, add);
 }	
+
+/* Free the hash-map before exiting the program */
+void delfromHashmap(file_entries *del)
+{
+	if (TFS_PRIV_DATA->head != NULL)
+	{
+		HASH_DEL(TFS_PRIV_DATA->head, del);
+		free (del);
+	}
+}
 
 /* Read line by line and store it in the respective fields */
 void readFile(char *file, file_entries **head)
@@ -79,7 +89,7 @@ void readFile(char *file, file_entries **head)
 	printf("inside readFile, init_file: %s\n", file);
 	char f_name[PATH_MAX];
 	mode_t mode;
-	int file_flag;
+	//int file_flag;
 	ssize_t read;
 	size_t len = 0;
 	char *line = NULL;
@@ -89,8 +99,8 @@ void readFile(char *file, file_entries **head)
         return;
 	}
 	while ((read = getline(&line, &len, fd)) != -1) {
-    		sscanf(line, "%d\t%07o\t%s",&file_flag, &mode, f_name);
-		addtoHashmap(file_flag, mode, f_name, head);
+    		sscanf(line, "%07o\t%s",&mode, f_name);
+		addtoHashmap(mode, f_name, head);
     	}
 	if (line)
 		free(line);
@@ -98,14 +108,15 @@ void readFile(char *file, file_entries **head)
 }
 
 /* write the present added hashmap entry into a file */
-void writetoFile(file_entries *add, char *file)
+void writetoFile(file_entries *add, char *file, char *mode)
 {
-	FILE *fd = fopen(file, "a");
+	FILE *fd = fopen(file, mode);
 	if (fd == NULL) {
   		printf("File open error\n");
         return;
     }
-	fprintf(fd, "%d\t%07o\t%s\n", add->file_flag, add->f_mode, add->f_name);
+	//printf("Write: mode - %s\n", mode);
+	fprintf(fd, "%07o\t%s\n",add->f_mode, add->f_name);
 	fclose(fd);
 }
 
@@ -143,7 +154,7 @@ int tfs_getattr(const char *path, struct stat *statbuf)
 		printf("Found %s in hash_map\n", tmppath);
 		strcat(tmppath, "_dir");
 		retstat = lstat(tmppath, statbuf);
-		if ((retstat == 0) && (find->file_flag == 1)) { //1 = regular file
+		if ((retstat == 0) && (S_ISREG(find->f_mode))) { //1 = regular file
 			#if 0
 			statbuf->st_mode &= ~S_IFDIR;
                         statbuf->st_mode |= S_IFREG; /* making dir look like a regular file */
@@ -297,6 +308,7 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     printf("In Read function\n");
     int retstat = 0;
     file_entries *find;
+	struct stat statbuf;
 	#if 1
     int fd;
     char fpath[PATH_MAX];
@@ -309,6 +321,11 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 		strcat(fpath, ".");
 		strcat(fpath, "0");
     }
+	/* checking if file inside the directory exists */
+	if ((retstat = lstat(fpath, &statbuf)) != 0) {
+		retstat = 0;
+		goto out;
+	}
     fd = open(fpath, fi->flags);
     #endif
     printf("TFS_READ: fpath before pread: %s\n", fpath);
@@ -316,6 +333,7 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     retstat = pread(fd, buf, size, offset);
     if (retstat < 0)
         retstat = tfs_error("tfs_read read");
+out:
     return retstat;
 }
 
@@ -377,7 +395,7 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
 					goto endReturn;
         		}
 			add->f_mode = mode;
-			add->file_flag = 1; /* Regular File */
+			//add->file_flag = 1; /* Regular File */
 			strcpy(add->f_name, tmp_path);
 			printf("HASH, write(): Adding entry %s to hash\n",add->f_name);
 			printf("TFS_WRITE(), mode_t: %o\n", add->f_mode);
@@ -499,7 +517,7 @@ int tfs_mkdir(const char *path, mode_t mode)
 			retstat = -ENOMEM;
 		}
 		add->f_mode = mode;
-		add->file_flag = 0; /* Normal Directory */
+		//add->file_flag = 0; /* Normal Directory */
 		strcpy(add->f_name, tmp_path);
 		printf("HASH, mkdir(): Adding directory %s to hash table\n",add->f_name);
 		HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
@@ -535,6 +553,8 @@ int tfs_unlink(const char *path)
     	retstat = rmdir(dpath); //remove the directory
     	if (retstat < 0)
         	retstat = tfs_error("tfs_unlink unlink");
+	else
+		delfromHashmap(find);
 	}
 	else {
 		retstat = unlink(fpath);
@@ -634,7 +654,7 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 	}
 	strcpy(add->f_name, tmp_path);
 	add->f_mode = mode;
-	add->file_flag = 1; /* 1 for directories we create */
+	//add->file_flag = 1; /* 1 for directories we create */
 	HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
 	//writetoFile(add);
 	printf("Added fpath %s into hash table\n", add->f_name);
@@ -772,7 +792,7 @@ int main(int argc, char *argv[])
 {
     int fuse_stat;
     my_tfs_data *tfs_priv_data;
-    file_entries *iterator;
+    file_entries *iterator; //*tmp;
     if ((argc < 3) || (argv[argc-2][0] == '-') || (argv[argc-1][0] == '-'))
         tfs_usage();
 
@@ -806,10 +826,17 @@ int main(int argc, char *argv[])
 	//writetoFile(tfs_priv_data->head);
 	#if 1
 	/* write to init_file all entries in hashmap before exiting the program */
-	for (iterator = tfs_priv_data->head; iterator != NULL; iterator = (file_entries *) (iterator->hh.next)) 
+	iterator = tfs_priv_data->head; 
+	while (iterator != NULL)
 	{
-		writetoFile(iterator, tfs_priv_data->init_file);		
-	}	
+		//tmp = iterator;
+		if (iterator == tfs_priv_data->head)
+			writetoFile(iterator, tfs_priv_data->init_file, "wb");
+		else
+			writetoFile(iterator, tfs_priv_data->init_file, "a");
+		iterator = (file_entries *) (iterator->hh.next);
+		//delfromHashmap (tmp);
+	}
 	#endif
     fprintf(stderr, "fuse_main returned %d\n", fuse_stat);
     free(tfs_priv_data);
