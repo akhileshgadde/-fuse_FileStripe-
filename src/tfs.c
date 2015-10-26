@@ -25,7 +25,7 @@
 #endif
 
 #define TFS_PRIV_DATA ((my_tfs_data *) fuse_get_context()->private_data)
-
+#define MAX_SIZE        2*1024*1024
 
 typedef struct file_entries_t
 {
@@ -307,37 +307,83 @@ int tfs_open(const char *path, struct fuse_file_info *fi)
    return retstat;
 }
 
+int tfs_my_read(const char *fpath, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
+{
+	int fd;
+	int retstat = 0;
+	fd = open(fpath, fi->flags);
+	if (fd < 0) {
+		retstat = -EBADF;
+		return retstat;
+	}
+	retstat = pread(fd, buf, size, offset);
+	if (retstat < 0)
+		retstat = tfs_error("tfs_read read");
+	//else
+	//	printf("l_buf read: %s, size: %zu\n",buf, size); 
+	close(fd);
+	return retstat;
+}
+
 int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
     printf("In Read function\n");
     int retstat = 0;
+	size_t orig_size = 0;
+	char l_buf[MAX_SIZE];
     file_entries *find;
-	struct stat statbuf;
-	#if 1
-    int fd;
+	//struct stat statbuf;
+	int part_no;
+	ListNode *temp;
+    //int fd;
     char fpath[PATH_MAX];
+	char orig_path[PATH_MAX];
     tfs_fullpath(fpath, path);
     HASH_FIND_STR(TFS_PRIV_DATA->head, fpath, find);
 	if (find != NULL)
     {
+		#if 0
+		/* checking if file inside the directory exists. If not present, just return 0 and don't print anything */
+		if ((retstat = lstat(fpath, &statbuf)) != 0) {
+			retstat = 0;
+			goto out;
+		}
+		#endif
 		strcat(fpath, "_dir");
-        strcat(fpath, path);
+		strcat(fpath, path);
 		strcat(fpath, ".");
-		strcat(fpath, "0");
-    }
-	/* checking if file inside the directory exists */
-	if ((retstat = lstat(fpath, &statbuf)) != 0) {
-		retstat = 0;
-		goto out;
+		strcpy(orig_path, fpath);
+		temp = find->head;
+		strcpy(buf, "\0");
+		while (temp != NULL)
+		{
+			part_no = temp->part_no;
+			sprintf(fpath, "%s%d", orig_path, part_no);
+			printf("TFS_READ: endoff: %jd, st_off: %jd\n", temp->end_off_t, temp->st_off_t);
+			size = temp->end_off_t - temp->st_off_t;
+			orig_size += size;
+			printf("TFS_READ: fpath after sprintf: %s, size: %zu\n", fpath, size);
+			retstat = tfs_my_read(fpath, l_buf, size, offset, fi);
+			if (retstat < 0) {
+				retstat = tfs_error("tfs_read read");
+				goto out;
+			}
+			printf("l_buf tfs_read: %s, size: %zu\n",l_buf, size);
+			strncat(buf, l_buf, size-1);
+			printf("Buf after strcat: %s\n", buf);
+			temp = temp->next; 
+		}
+		strcat(buf, "\0");
 	}
+	#if 0
 	printf("TFS_READ: Before file open, flags: 0x%08x\n", fi->flags);
     fd = open(fpath, fi->flags);
-    #endif
+ 
     printf("TFS_READ: fpath before pread: %s\n", fpath);
     //printf("TFS_READ: fd before pread: %d\n", fd);
     retstat = pread(fd, buf, size, offset);
-    if (retstat < 0)
-        retstat = tfs_error("tfs_read read");
+	#endif
+	*(&size) = orig_size;
 out:
     return retstat;
 }
