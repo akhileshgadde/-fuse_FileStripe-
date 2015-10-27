@@ -202,7 +202,7 @@ int tfs_getattr(const char *path, struct stat *statbuf)
 	printf("HASHMAP, getattr(): checking for %s\n", tmppath);
 	HASH_FIND_STR(TFS_PRIV_DATA->head, tmppath, find);
 	if (find != NULL)
-    	{
+    {
     /*if should check for each entry in hash map*/
 		//strcat(tmppath, path);		
 		/*handling file write*/
@@ -215,13 +215,15 @@ int tfs_getattr(const char *path, struct stat *statbuf)
                         statbuf->st_mode |= S_IFREG; /* making dir look like a regular file */
 			#endif	
 			statbuf->st_mode = find->f_mode;
-                }
-    	} else {
+			statbuf->st_size = findOffset(&find->head);
+        }
+    	else {
 		printf("HASH: find is NULL\n");
     		printf("Fpath4: %s\n", fpath);
     		retstat = lstat(fpath, statbuf);
 	  }
     }
+	}
 
     if (retstat != 0)
         retstat = tfs_error("tfs_getattr lstat");
@@ -421,7 +423,7 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 				goto out;
 			}
 			printf("l_buf tfs_read: %s, size: %zu\n",l_buf, size);
-			strncat(buf, l_buf, size-1);
+			strncat(buf, l_buf, size);
 			printf("Buf after strcat: %s\n", buf);
 			temp = temp->next; 
 		}
@@ -436,6 +438,7 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     retstat = pread(fd, buf, size, offset);
 	#endif
 	*(&size) = orig_size;
+	printf("TFS_READ: size after setting: %zu\n", size);
 out:
     return retstat;
 }
@@ -496,6 +499,7 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
 		addtoList(&find->head, part_no, st_off_t, end_off_t);
 		printList(&find->head);
 		truncate(fpath, size); //Change the size of the file.
+		//truncate(tmp_path, size+end_off_t);
 		close(fd);
     }
 //endReturn:
