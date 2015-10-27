@@ -10,7 +10,7 @@
 #include <fuse.h>
 #include <libgen.h>
 #include <limits.h>
-//#include <stdlib.h>
+#include <stdlib.h>
 //#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -19,6 +19,7 @@
 #include "uthash.h"
 #include "getline.h"
 #include "listnodes.h"
+#include "strtoll.h"
 
 #ifdef HAVE_SYS_XATTR_H
 #include <sys/xattr.h>
@@ -63,17 +64,18 @@ static void tfs_fullpath(char fpath[PATH_MAX], const char *path)
 }
 
 /* add the passed values to the HASHMAP */
-void addtoHashmap(mode_t mode, char *f_name, file_entries **head)
+file_entries *addtoHashmap(mode_t mode, char *f_name, file_entries **head)
 {
 	file_entries *add = (file_entries *) malloc (sizeof (file_entries));
 	if (add == NULL) {
     	printf("Malloc error\n");
-        return;
+        return NULL;
 	}
 	add->f_mode = mode;
 	//add->file_flag = file_flag;
 	strcpy(add->f_name, f_name);
 	HASH_ADD_STR(*head, f_name, add);
+	return add;
 }	
 
 /* Free the hash-map before exiting the program */
@@ -90,10 +92,17 @@ void delfromHashmap(file_entries *del)
 void readFile(char *file, file_entries **head)
 {
 	printf("inside readFile, init_file: %s\n", file);
+	file_entries *add;
 	char f_name[PATH_MAX];
 	mode_t mode;
-	//int file_flag;
+	//char parts_buf[4096];
+	char *token;
+	//char tmp_buf[5096];
+	int i;
 	ssize_t read;
+	int tot_parts;
+	int part_no;
+	offset_t st_off_t, end_off_t;
 	size_t len = 0;
 	char *line = NULL;
 	FILE *fd = fopen(file, "r");
@@ -102,9 +111,40 @@ void readFile(char *file, file_entries **head)
         return;
 	}
 	while ((read = getline(&line, &len, fd)) != -1) {
-    		sscanf(line, "%07o\t%s",&mode, f_name);
-		addtoHashmap(mode, f_name, head);
-    	}
+    	token = strtok(line, ":");
+		printf("Token: %s\n", token);
+		sscanf(token, "%07o\t%s\t%05d",&mode, f_name, &tot_parts);
+		//token = strtok(NULL, ";");
+		//printf("Initial parts_buf: %50s\n", parts_buf);
+		//strcpy(tmp_buf, parts_buf);
+		add = addtoHashmap(mode, f_name, head);
+		//printf("reading from file: tot_parts: %d\n", tot_parts);
+		for(i = 0; i < tot_parts; i++)
+		{
+			//if (i == 0)
+			token = strtok(NULL, ";");
+			printf("Token after 1st read: %s\n", token);
+			sscanf(token, "%05d %20jd %20jd", &part_no, &st_off_t, &end_off_t);
+			printf("part# %05d, st_off_t: %jd, end_off_t: %jd\n", part_no, st_off_t, end_off_t);
+			addtoList(&(add->head),part_no, st_off_t, end_off_t);
+			//printf("parts_buf after 1st sscanf: %s\n", parts_buf);
+			#if 0
+			token = strtok(parts_buf, " ");
+			printf("First token: %s\n", token);
+			part_no = atoi(token);
+			token = strtok(NULL, " ");
+			printf("Second token: %s\n", token);
+			st_off_t = strtoll(token, NULL, 10);
+			token = strtok(NULL, " ");
+			printf("Third token: %s\n", token);
+			end_off_t = strtoll(token, NULL, 10);
+			printf("Last token: %s\n", token);
+			token = strtok(NULL, "\n");
+			strcpy(parts_buf, token);
+			#endif
+		}
+    }
+	
 	if (line)
 		free(line);
 	fclose(fd);
@@ -114,12 +154,24 @@ void readFile(char *file, file_entries **head)
 void writetoFile(file_entries *add, char *file, char *mode)
 {
 	FILE *fd = fopen(file, mode);
+	ListNode *temp = add->head;
+	int tot_parts;
 	if (fd == NULL) {
   		printf("File open error\n");
         return;
     }
 	//printf("Write: mode - %s\n", mode);
-	fprintf(fd, "%07o\t%s\n",add->f_mode, add->f_name);
+	fprintf(fd, "%07o\t%s\t",add->f_mode, add->f_name);
+	tot_parts = findPartNumber(&temp);
+	fprintf(fd, "%05d:", tot_parts);
+	if (temp != NULL) {
+		while (temp->next != NULL)
+		{
+			fprintf(fd, "%05d %20jd %20jd;",temp->part_no, temp->st_off_t, temp->end_off_t); 
+			temp = temp->next;
+		}
+		fprintf(fd, "%05d %20jd %20jd;\n",temp->part_no, temp->st_off_t, temp->end_off_t);
+	}
 	fclose(fd);
 }
 
