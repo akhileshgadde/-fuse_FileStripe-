@@ -215,18 +215,21 @@ int tfs_getattr(const char *path, struct stat *statbuf)
                         statbuf->st_mode |= S_IFREG; /* making dir look like a regular file */
 			#endif	
 			statbuf->st_mode = find->f_mode;
-			statbuf->st_size = findOffset(&find->head);
+			printf("TFS_GETATTR(): setting size\n");
+			if (find->head != NULL)
+				statbuf->st_size = findOffset(&find->head);
         }
+	}
     	else {
 		printf("HASH: find is NULL\n");
     		printf("Fpath4: %s\n", fpath);
     		retstat = lstat(fpath, statbuf);
-	  }
-    }
+	   }
 	}
 
     if (retstat != 0)
         retstat = tfs_error("tfs_getattr lstat");
+	printf("going out of getattr()\n");
     return retstat;
 }
 
@@ -383,8 +386,8 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 {
     printf("In Read function\n");
     int retstat = 0;
-	size_t orig_size = 0;
-	char l_buf[MAX_SIZE];
+	size_t l_size = 0;
+	//char l_buf[MAX_SIZE];
     file_entries *find;
 	//struct stat statbuf;
 	int part_no;
@@ -408,26 +411,29 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 		strcat(fpath, ".");
 		strcpy(orig_path, fpath);
 		temp = find->head;
-		strcpy(buf, "\0");
+		//buf[0] = '\0';
+		size = 0;
 		while (temp != NULL)
 		{
 			part_no = temp->part_no;
 			sprintf(fpath, "%s%d", orig_path, part_no);
 			printf("TFS_READ: endoff: %jd, st_off: %jd\n", temp->end_off_t, temp->st_off_t);
-			size = temp->end_off_t - temp->st_off_t;
-			orig_size += size;
-			printf("TFS_READ: fpath after sprintf: %s, size: %zu\n", fpath, size);
-			retstat = tfs_my_read(fpath, l_buf, size, offset, fi);
+			l_size = temp->end_off_t - temp->st_off_t;
+			retstat = tfs_my_read(fpath, buf+size, l_size, 0, fi);/* To be changed to correct offset. offset = 0, bcoz reading entire file */
 			if (retstat < 0) {
 				retstat = tfs_error("tfs_read read");
 				goto out;
 			}
-			printf("l_buf tfs_read: %s, size: %zu\n",l_buf, size);
-			strncat(buf, l_buf, size);
-			printf("Buf after strcat: %s\n", buf);
+			printf("TFS_READ: fpath after sprintf: %s, l_size: %zu\n", fpath, l_size);
+			//printf("l_buf tfs_read: %s, size: %zu\n",l_buf, l_size);
+			//strncat(buf, l_buf, size);
+			//memcpy(buf+size, l_buf, l_size);
+			//printf("Buf after memcpy: %s\n", buf);
+			size += l_size;
+			printf("Total size: %zu\n", size);
 			temp = temp->next; 
 		}
-		strcat(buf, "\0");
+		//strcat(buf, "\0");
 	}
 	#if 0
 	printf("TFS_READ: Before file open, flags: 0x%08x\n", fi->flags);
@@ -435,12 +441,14 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
  
     printf("TFS_READ: fpath before pread: %s\n", fpath);
     //printf("TFS_READ: fd before pread: %d\n", fd);
+
     retstat = pread(fd, buf, size, offset);
 	#endif
-	*(&size) = orig_size;
 	printf("TFS_READ: size after setting: %zu\n", size);
 out:
-    return retstat;
+	if (retstat < 0)
+		return retstat;
+    return size;
 }
 
 int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
