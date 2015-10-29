@@ -83,6 +83,7 @@ void delfromHashmap(file_entries *del)
 {
 	if (TFS_PRIV_DATA->head != NULL)
 	{
+		delAllFromList(&del->head);
 		HASH_DEL(TFS_PRIV_DATA->head, del);
 		free (del);
 	}
@@ -622,35 +623,45 @@ int tfs_mkdir(const char *path, mode_t mode)
     return retstat;
 }
 
-//Remove the directory and file inside it
+// Remove the directory and file inside it
 int tfs_unlink(const char *path)
 {
     printf("In unlink function\n");
     int retstat = 0;
 	file_entries *find;
+	ListNode *temp;
+	int part_no;
     char fpath[PATH_MAX];
     char dpath[PATH_MAX];
+	char orig_path[PATH_MAX];
     tfs_fullpath(fpath, path); //for file
     strcpy(dpath, fpath); //For directory
     printf("Deleting %s file\n", fpath);
     HASH_FIND_STR(TFS_PRIV_DATA->head, fpath, find);
     if (find != NULL)
     {
-	printf("Found entry %s in hash_map\n", dpath);
-	strcat(fpath, "_dir");
- 	strcat(dpath, "_dir");
-	strcat(fpath, path);
-	strcat(fpath, ".");
-	strcat(fpath, "0");
-	printf("UNLINK: dpath: %s, fpath: %s\n", dpath, fpath);
-    	retstat = unlink(fpath);
-    	//if (retstat < 0)
-        //	retstat = tfs_error("tfs_unlink unlink");
-    	retstat = rmdir(dpath); //remove the directory
-    	if (retstat < 0)
-        	retstat = tfs_error("tfs_unlink unlink");
-	else
-		delfromHashmap(find);
+		printf("Found entry %s in hash_map\n", dpath);
+		strcat(fpath, "_dir");
+ 		strcat(dpath, "_dir");
+		strcat(fpath, path);
+		strcat(fpath, ".");
+		strcpy(orig_path, fpath);
+		temp = find->head;
+		while (temp != NULL)
+		{
+			part_no = temp->part_no;
+			sprintf(fpath, "%s%d", orig_path, part_no);
+			printf("UNLINK: fpath: %s\n", fpath);
+   			retstat = unlink(fpath);
+            if (retstat < 0)
+            retstat = tfs_error("tfs_unlink unlink");
+			temp = temp->next;
+		}
+   		retstat = rmdir(dpath); //remove the directory
+   		if (retstat < 0)
+      		retstat = tfs_error("tfs_unlink unlink");
+		else
+			delfromHashmap(find);
 	}
 	else {
 		retstat = unlink(fpath);
