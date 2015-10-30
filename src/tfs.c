@@ -19,7 +19,7 @@
 #include "uthash.h"
 #include "getline.h"
 #include "listnodes.h"
-#include "strtoll.h"
+//#include "strtoll.h"
 
 #ifdef HAVE_SYS_XATTR_H
 #include <sys/xattr.h>
@@ -128,21 +128,6 @@ void readFile(char *file, file_entries **head)
 			sscanf(token, "%05d %20jd %20jd", &part_no, &st_off_t, &end_off_t);
 			printf("part# %05d, st_off_t: %jd, end_off_t: %jd\n", part_no, st_off_t, end_off_t);
 			addtoList(&(add->head),part_no, st_off_t, end_off_t);
-			//printf("parts_buf after 1st sscanf: %s\n", parts_buf);
-			#if 0
-			token = strtok(parts_buf, " ");
-			printf("First token: %s\n", token);
-			part_no = atoi(token);
-			token = strtok(NULL, " ");
-			printf("Second token: %s\n", token);
-			st_off_t = strtoll(token, NULL, 10);
-			token = strtok(NULL, " ");
-			printf("Third token: %s\n", token);
-			end_off_t = strtoll(token, NULL, 10);
-			printf("Last token: %s\n", token);
-			token = strtok(NULL, "\n");
-			strcpy(parts_buf, token);
-			#endif
 		}
     }
 	
@@ -387,7 +372,7 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 {
     printf("In Read function\n");
     int retstat = 0;
-	size_t l_size = 0;
+	size_t tot_read = 0;
 	//char l_buf[MAX_SIZE];
     file_entries *find;
 	//struct stat statbuf;
@@ -407,31 +392,42 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 			goto out;
 		}
 		#endif
+        printf("TFS_READ: offset: %jd, size: %zu\n", offset, size);
 		strcat(fpath, "_dir");
 		strcat(fpath, path);
 		strcat(fpath, ".");
 		strcpy(orig_path, fpath);
 		temp = find->head;
 		//buf[0] = '\0';
-		size = 0;
-		while (temp != NULL)
+		//size = 0;
+		while (temp != NULL) /* find starting offset */
+        {
+            if (offset == temp->st_off_t){
+                printf("Found st offset in part: %d\n", temp->part_no);
+                break;
+            }
+            temp = temp->next;
+        }
+        //l_size = size;
+        while ((temp != NULL) && (tot_read < size))
 		{
-			part_no = temp->part_no;
+            part_no = temp->part_no;
 			sprintf(fpath, "%s%d", orig_path, part_no);
 			printf("TFS_READ: endoff: %jd, st_off: %jd\n", temp->end_off_t, temp->st_off_t);
-			l_size = temp->end_off_t - temp->st_off_t;
-			retstat = tfs_my_read(fpath, buf+size, l_size, 0, fi);/* To be changed to correct offset. offset = 0, bcoz reading entire file */
+			//l_size = temp->end_off_t - temp->st_off_t;
+			retstat = tfs_my_read(fpath, buf+tot_read, size, 0, fi);/* To be changed to correct offset. offset = 0, bcoz reading entire file */
 			if (retstat < 0) {
 				retstat = tfs_error("tfs_read read");
 				goto out;
 			}
-			printf("TFS_READ: fpath after sprintf: %s, l_size: %zu\n", fpath, l_size);
+            tot_read += retstat;
+			printf("TFS_READ: fpath after sprintf: %s, byes read: %d\n", fpath, retstat);
 			//printf("l_buf tfs_read: %s, size: %zu\n",l_buf, l_size);
 			//strncat(buf, l_buf, size);
 			//memcpy(buf+size, l_buf, l_size);
 			//printf("Buf after memcpy: %s\n", buf);
-			size += l_size;
-			printf("Total size: %zu\n", size);
+			//size += l_size;
+			printf("total bytes read: %zu\n", tot_read);
 			temp = temp->next; 
 		}
 		//strcat(buf, "\0");
@@ -445,11 +441,11 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 
     retstat = pread(fd, buf, size, offset);
 	#endif
-	printf("TFS_READ: size after setting: %zu\n", size);
+	//printf("TFS_READ: size after setting: %zu\n", size);
 out:
 	if (retstat < 0)
 		return retstat;
-    return size;
+    return tot_read;
 }
 
 int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
@@ -495,10 +491,10 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     fd = creat(fpath, mode);
     if (fd < 0)
 		return retstat = tfs_error("tfs_write open");
-    printf("TFS_WRITE: writing buf: %s to file\n", buf);
+    //printf("TFS_WRITE: writing buf: %s to file\n", buf);
     //if (offset != 0)
 	offset = 0;
-    printf("TFS_WRITE: Offset: %jd\n", st_off_t);
+    //printf("TFS_WRITE: Offset: %jd\n", st_off_t);
     retstat = pwrite(fd, buf, size, offset);
     if (retstat < 0)
         retstat = tfs_error("tfs_write pwrite");
@@ -894,8 +890,8 @@ int main(int argc, char *argv[])
     tfs_priv_data->head = NULL;
     tfs_priv_data->init_file = (char *) malloc (strlen("init_file.txt") + 1);
     if (tfs_priv_data->init_file == NULL) {
-	printf("Malloc() error\n");
-	abort();
+	    printf("Malloc() error\n");
+	    abort();
     }
     strcpy(tfs_priv_data->init_file, "init_file.txt");
     argv[argc-2] = argv[argc-1];
@@ -921,6 +917,7 @@ int main(int argc, char *argv[])
 	//delfromHashmap (tmp);
     }
     fprintf(stderr, "fuse_main returned %d\n", fuse_stat);
+    free(tfs_priv_data->init_file);
     free(tfs_priv_data);
     return fuse_stat;
 }
