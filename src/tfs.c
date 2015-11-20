@@ -5,7 +5,6 @@
 #include "params.h"
 #include <ctype.h>
 #include <dirent.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <fuse.h>
 #include <libgen.h>
@@ -15,8 +14,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "uthash.h"
-#include "getline.h"
-#include "listnodes.h"
+#include "ll_io.h"
 //#include "strtoll.h"
 
 #ifdef HAVE_SYS_XATTR_H
@@ -26,10 +24,6 @@
 #define TFS_PRIV_DATA ((my_tfs_data *) fuse_get_context()->private_data)
 #define MAX_SIZE        2*1024*1024
 
-typedef struct fuse_ll_info {
-    int fd;
-    ListNode *head;
-} Fuse_ll_info;
 
 typedef struct file_entries_t
 {
@@ -188,7 +182,7 @@ int tfs_getattr(const char *path, struct stat *statbuf)
         retstat = lstat(fpath, statbuf);
     }
     else { /* All other files */
-    printf("HASHMAP, getattr(): checking for %s\n", tmppath);
+    //printf("HASHMAP, getattr(): checking for %s\n", tmppath);
     HASH_FIND_STR(TFS_PRIV_DATA->head, tmppath, find);
     if (find != NULL)
     {
@@ -202,21 +196,19 @@ int tfs_getattr(const char *path, struct stat *statbuf)
                         statbuf->st_mode |= S_IFREG; /* making dir look like a regular file */
             #endif  
             statbuf->st_mode = find->f_mode;
-            printf("TFS_GETATTR(): setting size\n");
             if (find->head != NULL)
                 statbuf->st_size = findOffset(&find->head);
         }
     }
         else {
         printf("HASH: find is NULL\n");
-            printf("Fpath4: %s\n", fpath);
+            //printf("Fpath4: %s\n", fpath);
             retstat = lstat(fpath, statbuf);
        }
     }
 
     if (retstat != 0)
         retstat = tfs_error("tfs_getattr lstat");
-    printf("going out of getattr()\n");
     return retstat;
 }
 
@@ -300,10 +292,42 @@ int tfs_utime(const char *path, struct utimbuf *ubuf)
 
 int tfs_open(const char *path, struct fuse_file_info *fi)
 {
-   int retstat = 0;
-   printf("TFS_OPEN: Flags: 0x%08x\n", fi->flags);
-   retstat = 0;
-   return retstat;
+    int retstat = 0;
+    char fpath[PATH_MAX];
+    FILE *fp;
+    //printf("TFS_OPEN: Flags: 0x%08x\n", fi->flags);
+    Fuse_ll_info *f_ll_info;
+    f_ll_info = (Fuse_ll_info *) malloc(sizeof(Fuse_ll_info));
+    if (!f_ll_info) {
+        retstat = -ENOMEM;
+        goto out;
+    }
+    tfs_fullpath(fpath, path);
+    strcat(fpath, "_dir/.hashmap");
+    printf("TFS_OPEN: fpath: %s\n", fpath);
+    fp = fopen(fpath, "a+");/* using the flags in struct fuse_file_info since read would get read flags and write would get write flags and same logic applies for .hashmap also  - may fail in file append case?? */
+    if (!fp) {
+        retstat = tfs_error("TFS_OPEN open");
+        goto out;
+    }
+    f_ll_info->fp = fp;
+    printf("fp: %p, f_ll_info->fp: %p\n", fp, f_ll_info->fp);
+    
+    f_ll_info->head = NULL;
+    
+    printf("TFS_OPEN: f_ll_info: %p, head: %p\n", f_ll_info, f_ll_info->head);
+    retstat = readHashmapFile(f_ll_info->fp, &f_ll_info->head);
+    printf("TFS_OPEN: After reading from .hashmap file\n");
+    printf("TFS_OPEN: f_ll_info: %p, head: %p\n", f_ll_info, f_ll_info->head);
+    printList(&f_ll_info->head);
+    fi->fh = (long) f_ll_info;
+out:
+    if (retstat < 0) {
+        printf("tfs_open: retstat < 0\n");
+        if (f_ll_info)
+            free(f_ll_info);
+    }
+    return retstat;
 }
 
 int tfs_my_read(const char *fpath, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
@@ -331,6 +355,7 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     size_t tot_read = 0;
     //char l_buf[MAX_SIZE];
     file_entries *find;
+    Fuse_ll_info *f_ll_info = NULL;
     //struct stat statbuf;
     int part_no;
     ListNode *temp;
@@ -353,7 +378,9 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
         strcat(fpath, path);
         strcat(fpath, ".");
         strcpy(orig_path, fpath);
-        temp = find->head;
+        //temp = find->head;
+        f_ll_info = (Fuse_ll_info *) ((long) fi->fh);
+        temp = f_ll_info->head;
         //buf[0] = '\0';
         //size = 0;
         while (temp != NULL) /* find starting offset */
@@ -427,24 +454,23 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     if (find != NULL) /*found entry in hash map */
     {
         mode = find->f_mode;
-        printf("HASHMAP, write(): Found entry and setting mode\n");
+        //printf("HASHMAP, write(): Found entry and setting mode\n");
         strcat(fpath, "_dir");
         strcat(fpath, path);
         
         /* New logic - retrieveing from fi->fh */
-        f_ll_info = (Fuse_ll_info *) ((long) fi->fh);    
-        printf("TFS_write: f_ll_info: %p\n", f_ll_info);
-        //printf("Fd: %d\n", f_ll_info->fd);
+        f_ll_info = (Fuse_ll_info *) ((long) fi->fh);
+        printf("TFS_OPEN: f_ll_info: %p, head: %p\n", f_ll_info, f_ll_info->head);        //printf("Fd: %d\n", f_ll_info->fd);
         
         /*finding the correct part# from the linked list */
-        part_no = findPartNumber(&find->head);
+        part_no = findPartNumber(&f_ll_info->head);
         sprintf(tmp_str, "%c%d", '.', part_no);
         strcat(fpath, tmp_str);
         /* finding offset */
         if (part_no == 0)
             st_off_t = 0;
         else
-            st_off_t = findOffset(&find->head);
+            st_off_t = findOffset(&f_ll_info->head);
         end_off_t = st_off_t + size;
     } else
         mode  = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | ~S_IXUSR | ~S_IXGRP | ~S_IXOTH; 
@@ -453,8 +479,6 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     if (fd < 0)
         return retstat = tfs_error("tfs_write open");
     //printf("TFS_WRITE: writing buf: %s to file\n", buf);
-    //if (offset != 0)
-    offset = 0;
     //printf("TFS_WRITE: Offset: %jd\n", st_off_t);
     retstat = pwrite(fd, buf, size, offset);
     if (retstat < 0)
@@ -463,9 +487,13 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     {
         /* add the new part to the linked list */
         addtoList(&find->head, part_no, st_off_t, end_off_t);
-        printList(&find->head);
+        /* New list with .hashmap */
+        addtoList(&f_ll_info->head, part_no, st_off_t, end_off_t);
+        printList(&f_ll_info->head);
+//        printList(&(((Fuse_ll_info *) ((long) fi->fh))->head));
+        
+        printf("Added to LL & f_ll_info: %p, head: %p\n", f_ll_info, f_ll_info->head);
         truncate(fpath, size); //Change the size of the file.
-        //truncate(tmp_path, size+end_off_t);
         close(fd);
     }
 //endReturn:
@@ -689,9 +717,9 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     struct stat statbuf;
     char fpath[PATH_MAX];
     char tmp_path[PATH_MAX];
+    FILE *fp;
     file_entries *add; // *find;
     mode_t d_mode;
-    int fd;
     Fuse_ll_info *f_ll_info = NULL;
 
     tfs_fullpath(fpath, path);
@@ -702,7 +730,7 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     if ( lstat(fpath, &statbuf) < 0) //checking if directory is successfully created
     {
         printf("Directory creation error\n");
-        retstat = -1;
+        retstat = tfs_error("tfs_create create");
     }
     else { /* directory is successfully created. So make an entry in hash table */
         add = (file_entries *) malloc (sizeof (file_entries));
@@ -718,18 +746,25 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
         printf("Added fpath %s into hash table\n", add->f_name);
         /* create a .hashmap file and use that for storing linked list info persistently */
         strcat(fpath, "/.hashmap");
+        f_ll_info = (Fuse_ll_info *) malloc(sizeof(Fuse_ll_info));
+        if (!f_ll_info) {
+            retstat = -ENOMEM;
+            goto out;
+        }
+        #if 0
         fd = creat(fpath, mode | S_IRUSR | S_IWUSR);
         if (fd < 0) {
             printf(".hashmap file creation failed\n");
             retstat = -EBADF;
             goto out;
         }
-        f_ll_info = (Fuse_ll_info *) malloc(sizeof(Fuse_ll_info));
-        if (!f_ll_info) {
-            retstat = -ENOMEM;
+        #endif
+        fp = fopen(fpath, "w+");
+        if (!fp) {
+            retstat = -EBADF;
             goto out;
         }
-        f_ll_info->fd = fd;
+        f_ll_info->fp = fp;
         f_ll_info->head = NULL;
         printf("TFS_CREATE: f_ll_info: %p\n", f_ll_info);
         //printf("fd: %d\n", fd);
@@ -737,8 +772,8 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     }
 out:
     if (retstat < 0) {
-        if (fd > 0)
-            close(fd);
+        printf("TFS_CREATE: error, retstat < 0\n");
+        fclose(f_ll_info->fp);
         if (f_ll_info)
             free(f_ll_info);
         if (lstat(tmp_path, &statbuf) == 0) /* directory was created, so remove that in error case */
@@ -757,15 +792,21 @@ int tfs_release(const char *path, struct fuse_file_info *fi)
     int retstat = 0;
     Fuse_ll_info *f_ll_info = NULL;
     f_ll_info = (Fuse_ll_info *) ((long) fi->fh);
+    printf("Release: f_ll_info: %p, f_ll_info->head: %p\n", f_ll_info, f_ll_info->head);
     /* Add code for writing info in Linked List to .hashmap file */
-    if (f_ll_info->head != NULL) {
+    writeToHashmapFile(f_ll_info->fp, &f_ll_info->head);
+    retstat = fclose(f_ll_info->fp);
+    if (retstat != 0) {
+        printf("Release: Fclose failed\n");
+    }
+    if (f_ll_info->head) {
         printf("TFS_RELEASE: Freeing linked list\n");
-        delAllFromList(&f_ll_info->head);
+        printf("release: f_ll_info->head: %p\n", f_ll_info->head);
+        //printList(&f_ll_info->head);
+        delAllFromList(&(f_ll_info->head));
+        printf("release: f_ll_info->head after deleting LL: %p\n", f_ll_info->head);
     }
-    if (f_ll_info->fd > 0) {
-        printf("TFS_RELEASE: Closing .hashmap file descriptor\n");
-        retstat = close(f_ll_info->fd);
-    }
+    printf("tfs_release: about to free f_ll_info");
     if (f_ll_info)
         free(f_ll_info);
     return retstat;
