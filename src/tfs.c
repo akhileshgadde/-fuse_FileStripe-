@@ -315,8 +315,16 @@ int tfs_open(const char *path, struct fuse_file_info *fi)
     
     f_ll_info->head = NULL;
     
-    printf("TFS_OPEN: f_ll_info: %p, head: %p\n", f_ll_info, f_ll_info->head);
+    //printf("TFS_OPEN: f_ll_info: %p, head: %p\n", f_ll_info, f_ll_info->head);
     retstat = readHashmapFile(f_ll_info->fp, &f_ll_info->head);
+    fclose (f_ll_info->fp);
+    fp = fopen(fpath, "w+");
+    if (!fp) {
+        retstat = tfs_error("TFS_OPEN open");
+        goto out;
+    }
+    f_ll_info->fp = fp;
+
     printf("TFS_OPEN: After reading from .hashmap file\n");
     printf("TFS_OPEN: f_ll_info: %p, head: %p\n", f_ll_info, f_ll_info->head);
     printList(&f_ll_info->head);
