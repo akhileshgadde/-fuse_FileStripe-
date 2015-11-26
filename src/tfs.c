@@ -740,8 +740,7 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     strcat(fpath, "_dir");
     strcpy(file, path + 1);
     retstat = mkdir(fpath, d_mode);
-    if ( lstat(fpath, &statbuf) < 0) //checking if directory is successfully created
-    {
+    if ( lstat(fpath, &statbuf) < 0) { //checking if directory is successfully created
         printf("Directory creation error\n");
         retstat = tfs_error("tfs_create create");
     }
@@ -778,13 +777,13 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
             strcat(fpath, "/.hashmap");
             printf("create: opening hashmap of %s\n", fpath);
         }
-        root_fp = fopen(fpath, "w+");
+        root_fp = fopen(fpath, "a+");
         if (!root_fp) {
             retstat = -EINVAL;
             goto out;
         }
         printf("Writing file: %s, mode: %07o\n", file, mode);
-        fprintf(fp, "%s\t%07o\n", file, mode);
+        fprintf(root_fp, "%s\t%07o\n", file, mode);
         fclose(root_fp);/* may need to be moved to tfs_release () */
         printf("TFS_CREATE: f_ll_info: %p\n", f_ll_info);
         //printf("fd: %d\n", fd);
