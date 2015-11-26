@@ -165,13 +165,6 @@ int tfs_getattr(const char *path, struct stat *statbuf)
     char fpath[PATH_MAX];
     char tmppath[PATH_MAX];
     file_entries *find;
-    #if 0
-    /* check the init_flag and populate the HASH_MAP from the file */
-    if (TFS_PRIV_DATA->init_flag == 0) {
-        readFile(TFS_PRIV_DATA->init_file);
-        TFS_PRIV_DATA->init_flag = 1;
-    }
-    #endif
     
     tfs_fullpath(fpath, path);
     strcpy(tmppath, fpath);
@@ -612,9 +605,13 @@ int tfs_mkdir(const char *path, mode_t mode)
     printf("In mkdir function\n");
     int retstat = 0;
     file_entries *add;
-    FILE *fp;
+    FILE *fp, *root_fp;
+    //int fd;
     char fpath[PATH_MAX];
     char tmp_path[PATH_MAX];
+    char *temp_str;
+    //mode_t hmode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH;
+
     tfs_fullpath(fpath, path);
     strcpy(tmp_path, fpath);
     strcat(fpath, "_dir");
@@ -633,13 +630,37 @@ int tfs_mkdir(const char *path, mode_t mode)
         strcpy(add->f_name, tmp_path);
         printf("HASH, mkdir(): Adding directory %s to hash table\n",add->f_name);
         HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
+        /* create a .hashmap file for this directory */
         strcat(fpath, "/.hashmap");
-        printf("mkdir:Opening hashmap: %s\n", fpath);
-        fp = fopen(fpath, "a+");
+        printf("trying to creat hashmap: %s\n", fpath);
+        fp = fopen(fpath, "w+");
+        if (!fp) {
+            printf(".hashmap file creation for the current directory failed\n");
+            retstat = -EINVAL;
+            goto out;
+        }
+        /* adding to parent .hashmap file */
+        if ((temp_str = strstr(fpath, path)) != NULL) {
+            *temp_str = '\0';
+            strcat(fpath, "/.hashmap");
+            printf("create: opening hashmap of %s\n", fpath);
+        }
+        root_fp = fopen(fpath, "a+");
+        if (!root_fp) {
+            printf("unable to open parent hashmap\n");
+            retstat = -EINVAL;
+            goto out;
+        }
+            
         printf("adding %s dir to .hashmap\n", tmp_path);
-        fprintf(fp, "%s\t%07o\n", tmp_path, mode);
-        fclose(fp);
+        fprintf(root_fp, "%s\t%07o\n", path, mode);
+        
     }
+out:
+    if (fp)
+        fclose(fp);
+    if (root_fp)
+        fclose(root_fp);
     return retstat;
 }
 
