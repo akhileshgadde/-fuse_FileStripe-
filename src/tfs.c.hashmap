@@ -532,16 +532,12 @@ int tfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
     //DIR *dp;
     //int i;
     FILE *fp;
-    ssize_t read;
-    size_t len = 0;
-    char *line = NULL;
     //struct dirent *de;
     //file_entries *find;
-    //char tmp_path[PATH_MAX];
-    //char tmp_name[PATH_MAX];
-    char fpath[PATH_MAX];
-    mode_t fmode;
-    
+    char tmp_path[PATH_MAX];
+    char tmp_name[PATH_MAX];
+    char fpath[PATH_MAX], *path_str;
+
     fp = (FILE *) (uintptr_t) fi->fh;
     #if 0
     dp = (DIR *) (uintptr_t) fi->fh;
@@ -553,7 +549,10 @@ int tfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
     }
     printf("\nREADDIR: Path %s\n\n", path);
     //filler(buf, de->d_name, NULL, 0);
-    do {/*if should check for each entry in hash map*/ 
+    #endif
+    do {/*if should check for each entry in hash map*/
+    
+    #if 0
     strcpy(tmp_path, "/");
     strcpy(tmp_name, de->d_name);
     if ((path_str = strstr(de->d_name, "_dir")) != NULL) {
@@ -567,24 +566,14 @@ int tfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
     if (find == NULL) { /* entry found in hash */
         strcpy(de->d_name, tmp_name);
     }
+    #endif
     
         if (filler(buf, de->d_name, NULL, 0) != 0) {
              printf("Error in Filler\n");
              return -ENOMEM;
         }
     } while ((de = readdir(dp)) != NULL);
-    #endif
     
-    while ((read = getline(&line, &len, fp)) != -1) {
-        sscanf(line, "%s\t%07o", fpath, &fmode);        
-        printf("readdir: file: %s\n", fpath);
-        if (filler(buf, fpath, NULL, 0) != 0) {
-            printf("Error in Filler\n");
-            retstat = -ENOMEM;
-            goto out;
-        } 
-    }
-out:
     return retstat;
 }
 
@@ -612,7 +601,6 @@ int tfs_mkdir(const char *path, mode_t mode)
     printf("In mkdir function\n");
     int retstat = 0;
     file_entries *add;
-    FILE *fp;
     char fpath[PATH_MAX];
     char tmp_path[PATH_MAX];
     tfs_fullpath(fpath, path);
@@ -633,12 +621,7 @@ int tfs_mkdir(const char *path, mode_t mode)
         strcpy(add->f_name, tmp_path);
         printf("HASH, mkdir(): Adding directory %s to hash table\n",add->f_name);
         HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
-        strcat(fpath, "/.hashmap");
-        printf("mkdir:Opening hashmap: %s\n", fpath);
-        fp = fopen(fpath, "a+");
-        printf("adding %s dir to .hashmap\n", tmp_path);
-        fprintf(fp, "%s\t%07o\n", tmp_path, mode);
-        fclose(fp);
+        //writetoFile(add);
     }
     return retstat;
 }
@@ -738,13 +721,9 @@ int tfs_opendir(const char *path, struct fuse_file_info *fi)
     //HASH_FIND_STR(TFS_PRIV_DATA->head, fpath, find);
     
     //if (find != NULL)
-    fpath[strlen(fpath)-1] = '\0';
-    printf("TFS_PRIV_DATA->rootdir: %s\n", TFS_PRIV_DATA->rootdir);
-    if (strcmp(fpath, TFS_PRIV_DATA->rootdir))
-        strcat(fpath,"_dir");
-    strcat(fpath, "/.hashmap");
-    if ((retstat = lstat(fpath, &statbuf)) != 0) {
-        printf(".hashmap file missing for dir: %s\n", fpath);
+    strcat(fpath,"_dir/.hashmap");
+    if (retstat = lstat(fpath, &statbuf) != 0) {
+        printf(".hashmap file missing for dir: %s\n", path);
         retstat = -ENOENT;
         goto out;
     }
@@ -882,7 +861,7 @@ int tfs_releasedir(const char *path, struct fuse_file_info *fi)
 {
     printf("In releasedir function\n");
     int retstat = 0;
-    fclose((FILE *) (uintptr_t) fi->fh);
+    closedir((DIR *) (uintptr_t) fi->fh);
     return retstat;
 }
 
