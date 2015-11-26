@@ -766,7 +766,7 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
         }
         fp = fopen(fpath, "w+");
         if (!fp) {
-            retstat = -EBADF;
+            retstat = -EINVAL;
             goto out;
         }
         f_ll_info->fp = fp;
@@ -774,11 +774,16 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
         f_ll_info->fmode = mode;
         /* adding entry to parent dir .hashmap file */
         if ((temp_str = strstr(fpath, path)) != NULL) {
-            temp_str = '\0';
-            strcat(fpath, ".hashmap");
+            *temp_str = '\0';
+            strcat(fpath, "/.hashmap");
             printf("create: opening hashmap of %s\n", fpath);
         }
-        root_fp = fopen(fpath, "a+");
+        root_fp = fopen(fpath, "w+");
+        if (!root_fp) {
+            retstat = -EINVAL;
+            goto out;
+        }
+        printf("Writing file: %s, mode: %07o\n", file, mode);
         fprintf(fp, "%s\t%07o\n", file, mode);
         fclose(root_fp);/* may need to be moved to tfs_release () */
         printf("TFS_CREATE: f_ll_info: %p\n", f_ll_info);
