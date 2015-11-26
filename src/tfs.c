@@ -727,7 +727,9 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     struct stat statbuf;
     char fpath[PATH_MAX];
     char tmp_path[PATH_MAX];
-    FILE *fp;
+    char file[PATH_MAX];
+    char *temp_str;
+    FILE *fp, *root_fp;
     file_entries *add; // *find;
     mode_t d_mode;
     Fuse_ll_info *f_ll_info = NULL;
@@ -736,6 +738,7 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     strcpy(tmp_path, fpath);
     d_mode = mode | S_IXUSR | S_IXGRP | S_IXOTH; /* Add execute permision b/c it's a directory*/
     strcat(fpath, "_dir");
+    strcpy(file, path + 1);
     retstat = mkdir(fpath, d_mode);
     if ( lstat(fpath, &statbuf) < 0) //checking if directory is successfully created
     {
@@ -761,14 +764,6 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
             retstat = -ENOMEM;
             goto out;
         }
-        #if 0
-        fd = creat(fpath, mode | S_IRUSR | S_IWUSR);
-        if (fd < 0) {
-            printf(".hashmap file creation failed\n");
-            retstat = -EBADF;
-            goto out;
-        }
-        #endif
         fp = fopen(fpath, "w+");
         if (!fp) {
             retstat = -EBADF;
@@ -777,6 +772,15 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
         f_ll_info->fp = fp;
         f_ll_info->head = NULL;
         f_ll_info->fmode = mode;
+        /* adding entry to parent dir .hashmap file */
+        if ((temp_str = strstr(fpath, path)) != NULL) {
+            temp_str = '\0';
+            strcat(fpath, ".hashmap");
+            printf("create: opening hashmap of %s\n", fpath);
+        }
+        root_fp = fopen(fpath, "a+");
+        fprintf(fp, "%s\t%07o\n", file, mode);
+        fclose(root_fp);/* may need to be moved to tfs_release () */
         printf("TFS_CREATE: f_ll_info: %p\n", f_ll_info);
         //printf("fd: %d\n", fd);
         fi->fh = (long) f_ll_info;
@@ -943,8 +947,14 @@ int main(int argc, char *argv[])
         perror("main calloc: tfs_priv_data");
         abort();
     }
-    
+    printf("before realpath: %s\n", argv[argc-2]);
+     
     tfs_priv_data->rootdir = realpath(argv[argc-2], NULL);
+    if (!tfs_priv_data->rootdir) {
+        printf("Error obtaining the mount point full path\n");
+        fuse_stat = -EINVAL;
+        goto out;
+    }
     tfs_priv_data->head = NULL;
     tfs_priv_data->init_file = (char *) malloc (strlen("init_file.txt") + 1);
     if (tfs_priv_data->init_file == NULL) {
@@ -956,6 +966,8 @@ int main(int argc, char *argv[])
     argv[argc-1] = NULL;
     argc--;
 
+    printf("main: tfs_priv_data->rootdir: %s\n", tfs_priv_data->rootdir);
+    #if 1
     /* tfs_priv_data->rootdir holds the mount point 
     *  Create .hashmap file if not exists
     */
@@ -972,6 +984,7 @@ int main(int argc, char *argv[])
         }
         close(fd); //closing the .hashmap file 
     }
+    #endif
     /* Read from init_file if it exists */
     readFile(tfs_priv_data->init_file, &tfs_priv_data->head);
     // turn over control to fuse
