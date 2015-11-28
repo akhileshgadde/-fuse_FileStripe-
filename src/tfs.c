@@ -163,8 +163,16 @@ int tfs_getattr(const char *path, struct stat *statbuf)
     printf("In getattr function\n");
     int retstat = 0;
     char fpath[PATH_MAX];
+    char file[PATH_MAX];
+    mode_t mode;
     char tmppath[PATH_MAX];
-    file_entries *find;
+    //file_entries *find;
+    char *temp_str;
+    FILE *root_fp = NULL;
+    size_t len = 0;
+    ssize_t read;
+    char *line = NULL;
+    int found_flag = 0;
     
     tfs_fullpath(fpath, path);
     strcpy(tmppath, fpath);
@@ -175,33 +183,43 @@ int tfs_getattr(const char *path, struct stat *statbuf)
         retstat = lstat(fpath, statbuf);
     }
     else { /* All other files */
-    //printf("HASHMAP, getattr(): checking for %s\n", tmppath);
-    HASH_FIND_STR(TFS_PRIV_DATA->head, tmppath, find);
-    if (find != NULL)
-    {
-        /*handling file write*/
-        printf("Found %s in hash_map\n", tmppath);
-        strcat(tmppath, "_dir");
-        retstat = lstat(tmppath, statbuf);
-        if ((retstat == 0) && (S_ISREG(find->f_mode))) { //1 = regular file
-            #if 0
-            statbuf->st_mode &= ~S_IFDIR;
-                        statbuf->st_mode |= S_IFREG; /* making dir look like a regular file */
-            #endif  
-            statbuf->st_mode = find->f_mode;
-            if (find->head != NULL)
-                statbuf->st_size = findOffset(&find->head);
+        if ((temp_str = strstr(fpath, path)) != NULL)
+            *temp_str = '\0';
+        strcat(fpath, "/.hashmap");
+        printf("getattr: hashmap fpath: %s\n", fpath);
+        root_fp = fopen(fpath, "r");
+        if (!root_fp) {
+            printf("Error opening .hashmap file: %s\n", fpath);
+            retstat = -ENOENT;
+            goto out;   
+        }
+        printf("Opened .hashmap file and reading\n");
+        while ((read = getline(&line, &len, root_fp)) != -1) {
+            sscanf(line, "%s\t%07o", file, &mode);
+            printf("%s\t%07o\n", file, mode);
+            if (!strcmp(file, path+1)) {
+                printf("found file in .hashmap: %s\n", file);
+                found_flag = 1;
+                break;
+            } 
+        }
+        if (found_flag == 1) {
+            strcat(tmppath, "_dir");
+            printf("lstat on path: %s\n", tmppath);
+            retstat = lstat(tmppath, statbuf);
+            if ((retstat == 0) && (S_ISREG(mode))) {
+                statbuf->st_mode = mode;
+            }
+        }
+        else {
+            printf("getattr: found_flag = 0\n");    
+            retstat = -ENOENT;
+            goto out;
         }
     }
-        else {
-        printf("HASH: find is NULL\n");
-            //printf("Fpath4: %s\n", fpath);
-            retstat = lstat(fpath, statbuf);
-       }
-    }
-
-    if (retstat != 0)
-        retstat = tfs_error("tfs_getattr lstat");
+out:
+    if (root_fp)
+        fclose(root_fp);
     return retstat;
 }
 
