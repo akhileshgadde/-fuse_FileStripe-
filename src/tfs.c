@@ -671,7 +671,7 @@ int tfs_mkdir(const char *path, mode_t mode)
         }
             
         printf("adding %s dir to .hashmap\n", tmp_path);
-        fprintf(root_fp, "%s\t%07o\n", path, mode);
+        fprintf(root_fp, "%s\t%07o\n", path+1, mode);
         
     }
 out:
