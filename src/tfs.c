@@ -174,7 +174,9 @@ int tfs_getattr(const char *path, struct stat *statbuf)
     char *line = NULL;
     int found_flag = 0;
     
+    printf("Moussa hash: Getattr: Path: %s\n", path); 
     tfs_fullpath(fpath, path);
+    printf("Moussa hash: Getattr: fPath: %s\n", fpath); 
     strcpy(tmppath, fpath);
     /*check if root directory or autorun.inf file */
     if ((!strcmp(path, "/")) || (!strcmp(path, "/autorun.inf")))
@@ -207,9 +209,10 @@ int tfs_getattr(const char *path, struct stat *statbuf)
             strcat(tmppath, "_dir");
             printf("lstat on path: %s\n", tmppath);
             retstat = lstat(tmppath, statbuf);
-            if ((retstat == 0) && (S_ISREG(mode))) {
+            /* Add to the hashmap cache the full path */
+            //assert (retstat == 0);
+            if ((retstat == 0) && S_ISREG(mode))
                 statbuf->st_mode = mode;
-            }
         }
         else {
             printf("getattr: found_flag = 0\n");    
@@ -459,12 +462,18 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     int retstat = 0;
     char fpath[PATH_MAX];
     char tmp_path[PATH_MAX];
+    char del_path[PATH_MAX];
+    char orig_path[PATH_MAX];
+    char hashmap_fpath[PATH_MAX];
     char tmp_str[10];
     int part_no;
+    FILE *h_fp = NULL;
+    ListNode *temp = NULL;
     Fuse_ll_info *f_ll_info;
     offset_t st_off_t, end_off_t;
     tfs_fullpath(fpath, path);
     strcpy(tmp_path, fpath);
+    strcpy(del_path, fpath);
     file_entries *find; //*file_find;
     //mode_t mode;
     int fd;
@@ -474,7 +483,9 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
      */
     HASH_FIND_STR(TFS_PRIV_DATA->head, tmp_path, find);
     if (find != NULL) /*found entry in hash map */
-    {
+    {   
+        //old logic with global hashmap
+    }
         //mode = find->f_mode;
         //printf("HASHMAP, write(): Found entry and setting mode\n");
         strcat(fpath, "_dir");
@@ -483,7 +494,40 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
         /* New logic - retrieveing from fi->fh */
         f_ll_info = (Fuse_ll_info *) ((long) fi->fh);
         printf("TFS_OPEN: f_ll_info: %p, head: %p\n", f_ll_info, f_ll_info->head);        //printf("Fd: %d\n", f_ll_info->fd);
-        
+       
+        /* handing if offset = 0, overwrite complete file */
+        if (offset == 0) {
+            /* deleting the parts */
+            strcat(del_path, "_dir");
+            strcpy(hashmap_fpath, del_path);
+            strcat(del_path, path);
+            strcat(del_path, ".");
+            temp = f_ll_info->head;
+            strcpy(orig_path, del_path);
+            while (temp != NULL)
+            {
+                part_no = temp->part_no;
+                sprintf(del_path, "%s%d", orig_path, part_no);
+                printf("tfs_write: deleting %s\n", del_path);
+                retstat = unlink(del_path);
+                if (retstat < 0)
+                    retstat = tfs_error("Unlink in tfs_write");
+                temp = temp->next;
+            }
+            /* del from actual LL */
+            delAllFromList(&f_ll_info->head);
+            f_ll_info->head = NULL;
+            h_fp = f_ll_info->fp;
+            /* del from actual .hashmap file */
+            strcat(hashmap_fpath, "/.hashmap");
+            printf("tfs_write: .hashmap for reopen: %s\n", hashmap_fpath);
+            f_ll_info->fp = freopen(hashmap_fpath,"w+", h_fp);
+            if (f_ll_info->fp == NULL) {
+                printf("Error in reopening the .hashmap file.\n");
+                retstat = tfs_error(".hashmap file re-open error.\n");
+            }
+        }        
+        *tmp_str = '\0';
         /*finding the correct part# from the linked list */
         part_no = findPartNumber(&f_ll_info->head);
         sprintf(tmp_str, "%c%d", '.', part_no);
@@ -494,7 +538,7 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
         else
             st_off_t = findOffset(&f_ll_info->head);
         end_off_t = st_off_t + size;
-    } //else
+   // } else
        // mode  = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | ~S_IXUSR | ~S_IXGRP | ~S_IXOTH; 
     printf("WRITE(): path before creat: %s\n", fpath);
     fd = creat(fpath, f_ll_info->fmode);
@@ -506,8 +550,10 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
         retstat = tfs_error("tfs_write pwrite");
     else if (fd > 0)
     {
-        /* add the new part to the linked list */
+        
+        /* add the new part to the linked list - old logic */
         addtoList(&find->head, part_no, st_off_t, end_off_t);
+        
         /* New list with .hashmap */
         addtoList(&f_ll_info->head, part_no, st_off_t, end_off_t);
         printList(&f_ll_info->head);
