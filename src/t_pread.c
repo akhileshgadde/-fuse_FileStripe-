@@ -1,3 +1,9 @@
+/*  C file to read from specific offset 
+*   Specify the starting and ending offset in the command line
+*   Compiling: gcc -Wall -Werror t_pread.c -o t_pread
+*   Running: ./t_pread <start-offset> <end-offset>
+*/
+
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -41,8 +47,8 @@ int main(int argc, char **argv)
     }
     ret = pread(fd, buf, end_off_t - st_off_t, st_off_t);
     buf[ret] = 0x00;
-    printf("Pread buf, bytes read: %d:\n", ret);
-    //printf("%s\n", buf);    
+    printf("Bytes read: %d:\n", ret);
+    printf("Read buf:\n%s\n", buf);    
     close (fd);
     return 1;
 }
