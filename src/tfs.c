@@ -1,6 +1,8 @@
-/* Code skeleton credits: Joseph J. Pfeiffer, Emeritus Professor, New Mexico State University */
-
-// gcc -ggdb -Wall -o tfs tfs.c `pkg-config fuse --cflags --libs`
+/* 
+*   The code has been based on BBFS file system written by Prof. Joseph J. Pfeiffer, 
+*   Emeritus Professor, New Mexico State University.
+*   Compiling: gcc -ggdb -Wall -o tfs tfs.c `pkg-config fuse --cflags --libs`
+*/
 
 #include "params.h"
 #include <ctype.h>
@@ -13,6 +15,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <assert.h>
 #include "uthash.h"
 #include "ll_io.h"
 //#include "strtoll.h"
@@ -38,6 +41,7 @@ typedef struct MY_TFS_DATA
 {
     char *rootdir;
     file_entries *head;
+    file_entries *cache_head;
     //int init_flag;
     char *init_file;
 } my_tfs_data;
@@ -52,12 +56,148 @@ static int tfs_error(char *str)
     return ret;
 }
 
+int get_slash_count(const char *path)
+{
+    int count = 0;
+    char *temp_str = NULL;
+    char temp_path[PATH_MAX];
+
+    strncpy(temp_path, path, PATH_MAX);
+    while ((temp_str = strstr(temp_path, "/")) != NULL) {
+        count++;
+        strcpy(temp_path, (temp_str + 1));
+    } 
+    return count;
+}
+
+void get_correct_fpath(const char *path, char *new_fpath, int len)
+{
+    int pos1 = 0, pos2 = 0;
+    int count = 0;
+    int init_slash_flag = 0;
+    char *temp_str = NULL;
+    char temp_path[PATH_MAX];    
+
+    strncpy(temp_path, path, PATH_MAX);
+     /* dealing with path like /dir/file1 */
+    while ((temp_str = strstr(temp_path, "/")) != NULL) {
+        count++;
+        strcpy(temp_path, (temp_str + 1));
+    }
+    printf("***fullpath: count: %d\n", count); 
+    while (len > 0)
+    {
+        if ((*(path+pos2) == '/') && (!init_slash_flag)) {
+            init_slash_flag = 1;
+            *(new_fpath + pos1) = *(path+pos2);
+            pos1++; pos2++;
+            printf("Setting init_slash_flag\n");
+        }
+        //printf("checking for char: %c\n", *(path+pos2));
+        if ((*(path+pos2) == '/') && (init_slash_flag)) {
+            *(new_fpath+pos1) = '_';
+            pos1++;
+            *(new_fpath+pos1) = 'd';
+            pos1++;
+            *(new_fpath+pos1) = 'i';
+            pos1++;
+            *(new_fpath+pos1) = 'r';
+            pos1++;
+            //*(new_fpath+pos1) = '/';
+        }
+
+        *(new_fpath + pos1) = *(path + pos2);
+        //printf("***new_fpath: %s\n", new_fpath);
+        pos1++; pos2++;
+        len--;
+    }
+    new_fpath[pos1] = '\0'; 
+}
+
+/* find the last occurrence of a substring in the given string */
+char *my_strstr(char *fpath)
+{
+    char temp_fpath[PATH_MAX];
+    char *pos_ptr = NULL;
+    char *res;
+    strncpy(temp_fpath, fpath, PATH_MAX);
+    while ((res = strstr(temp_fpath, "_dir")) != NULL)
+    {
+        pos_ptr = res;
+        strcpy(temp_fpath, res + 4);
+        printf("my_strstr: temp_fpath: %s\n", temp_fpath);
+    }
+    printf("my_strstsr: pos_ptr: %s\n", pos_ptr);
+    return pos_ptr;
+}
+
+
 static void tfs_fullpath(char fpath[PATH_MAX], const char *path)
 {
-    //printf("In fullpath function\n");
+    char temp_path[PATH_MAX];
+    char new_fpath[PATH_MAX];
+    char *temp_str = NULL;
+    //int init_slash_flag = 0;
+    int count = 0, len; //pos1 = 0, pos2 = 0;
+    file_entries *find_cache = NULL;
+    printf("Fullpath for: %s\n", path);
+    
+    strcpy(temp_path, path);
+    /* dealing with path like /dir/file1 */
+    while ((temp_str = strstr(temp_path, "/")) != NULL) {
+        count++;
+        strcpy(temp_path, (temp_str + 1));
+    }
+    printf("***fullpath: count: %d\n", count);
+    
+    strcpy(temp_path, path);
+    len = strlen(path);
+    new_fpath[len] = '\0';
+    if (count > 1) 
+    {
+        get_correct_fpath(path, new_fpath, len);
+    }
+    printf("new_fpath after get_correct_fpath: %s\n", new_fpath); 
+    
+    # if 0
+    t_newpath = &new_fpath;
+    t_path = path;
+    if (count > 1) {
+        while ((temp_str = strstr(temp_path, "/")) != NULL) {
+            t_tempstr = temp_path;
+            while (*t_path != *(t_tempstr-1))
+            {
+                *t_newpath = *t_path;
+                t_newpath++;
+                t_path++;
+            }
+            *t_newpath = '\0';
+            printf("t_newpath: %s\n",new_fpath); 
+            strcat(new_fpath,"_dir");
+            strcpy(temp_path, (temp_str + 1));
+        }
+        printf("***new_fpath: %s\n", new_fpath);
+    }
+    #endif
+    
     strcpy(fpath, TFS_PRIV_DATA->rootdir);
-    strncat(fpath, path, PATH_MAX); 
-    //printf("TFS_FULLPATH(): %s\n", fpath);
+    strcpy(temp_path, fpath);
+    if (count > 1) {
+        //printf("count>1, appending: %s\n", new_fpath);
+        strncat(temp_path, new_fpath, PATH_MAX);
+    }
+    else
+        strncat(temp_path, path, PATH_MAX);
+    HASH_FIND_STR(TFS_PRIV_DATA->cache_head, temp_path, find_cache);
+    if ((find_cache != NULL) && (S_ISDIR(find_cache->f_mode)) && (strcmp(fpath, TFS_PRIV_DATA->rootdir)))
+    {
+        strcat(fpath, "_dir");
+        printf("** found entry in cache and new fpath: %s\n", fpath);
+    }
+
+    //strncat(fpath, path, PATH_MAX); 
+    strcpy(fpath, temp_path);
+    printf("TFS_FULLPATH() before return, fpath: %s\n", fpath);
 }
 
 /* add the passed values to the HASHMAP */
@@ -74,6 +214,16 @@ file_entries *addtoHashmap(mode_t mode, char *f_name, file_entries **head)
     HASH_ADD_STR(*head, f_name, add);
     return add;
 }   
+
+/* delete cache entry from cache_hashmap */
+void delCacheFromHashamp(file_entries *entry)
+{
+    if(TFS_PRIV_DATA->cache_head != NULL)
+    {
+        HASH_DEL(TFS_PRIV_DATA->cache_head, entry);
+        free(entry);
+    }
+}
 
 /* Free the hash-map before exiting the program */
 void delfromHashmap(file_entries *del)
@@ -164,19 +314,23 @@ int tfs_getattr(const char *path, struct stat *statbuf)
     int retstat = 0;
     char fpath[PATH_MAX];
     char file[PATH_MAX];
+    char orig_path[PATH_MAX];
     mode_t mode;
+    int slash_ct = 0;
     char tmppath[PATH_MAX];
+    file_entries *add_cache;
     //file_entries *find;
-    char *temp_str;
+    char *last_slash_ptr;
     FILE *root_fp = NULL;
     size_t len = 0;
     ssize_t read;
     char *line = NULL;
     int found_flag = 0;
     
-    printf("Moussa hash: Getattr: Path: %s\n", path); 
+    //printf("Moussa hash: Getattr: Path: %s\n", path); 
     tfs_fullpath(fpath, path);
-    printf("Moussa hash: Getattr: fPath: %s\n", fpath); 
+    printf("After fullpath: Getattr: fPath: %s\n", fpath); 
+    strcpy(orig_path, fpath);
     strcpy(tmppath, fpath);
     /*check if root directory or autorun.inf file */
     if ((!strcmp(path, "/")) || (!strcmp(path, "/autorun.inf")))
@@ -185,13 +339,40 @@ int tfs_getattr(const char *path, struct stat *statbuf)
         retstat = lstat(fpath, statbuf);
     }
     else { /* All other files */
+ /* this will work for normal files - /file1,etc but wouldn't work for paths that have _dir like dir1_dir/file1 since path given by Fuse is /dir1/file1 and we are adding _dir in tfs_fullpath */
+        #if 0
         if ((temp_str = strstr(fpath, path)) != NULL)
             *temp_str = '\0';
-        strcat(fpath, "/.hashmap");
-        printf("getattr: hashmap fpath: %s\n", fpath);
-        root_fp = fopen(fpath, "r");
+        #endif
+        slash_ct = get_slash_count(path);
+        if (slash_ct > 1) {
+            last_slash_ptr = strrchr(tmppath, '/');
+        }
+        else {
+            last_slash_ptr = strstr(tmppath, path);
+            printf("In else loop.\n");
+        }
+        //*(last_slash_ptr+1) = '\0';
+        if (last_slash_ptr)  {//Need to remove last _dir since one _dir is appeneded later.
+            last_slash_ptr = my_strstr(tmppath);
+            if (last_slash_ptr)
+                *last_slash_ptr = '\0';
+        }
+        //printf("last_slash_ptr: %s\n",last_slash_ptr); 
+
+        //*last_slash_ptr = '\0';
+        printf("after strrchr. tmppath: %s\n", tmppath);
+        
+        //strcpy(tmppath, fpath);
+        
+        //printf("tfs_getattr: fpath after strstr for hashmap: %s\n", fpath);
+        if (strcmp(tmppath,TFS_PRIV_DATA->rootdir)) //append _dir only if not rootdir
+            strcat(tmppath, "_dir"); 
+        strcat(tmppath, "/.hashmap");
+        printf("getattr: hashmap fpath: %s\n", tmppath);
+        root_fp = fopen(tmppath, "r");
         if (!root_fp) {
-            printf("Error opening .hashmap file: %s\n", fpath);
+            printf("Error opening .hashmap file: %s\n", tmppath);
             retstat = -ENOENT;
             goto out;   
         }
@@ -203,19 +384,31 @@ int tfs_getattr(const char *path, struct stat *statbuf)
                 printf("found file in .hashmap: %s\n", file);
                 found_flag = 1;
                 break;
-            } 
+            }
         }
         if (found_flag == 1) {
-            strcat(tmppath, "_dir");
-            printf("lstat on path: %s\n", tmppath);
-            retstat = lstat(tmppath, statbuf);
+            strcat(fpath, "_dir");
+            printf("lstat on path: %s\n", fpath);
+            retstat = lstat(fpath, statbuf);
             /* Add to the hashmap cache the full path */
-            //assert (retstat == 0);
-            if ((retstat == 0) && S_ISREG(mode))
+            assert (retstat == 0);
+            
+            //printf("st_mode from statbuf: %07o, mode from file: %07o\n", statbuf->st_mode, mode); 
+            if (S_ISREG(mode)) {
+                //printf("Setting mode: %07o to st_mode\n", mode);
                 statbuf->st_mode = mode;
+                //printf("after setting mode: %07o\n", statbuf->st_mode);
+            }
+            /* adding successful lookup to the global hashmap */
+            add_cache = addtoHashmap(statbuf->st_mode, orig_path, &(TFS_PRIV_DATA->cache_head));
+            if (!add_cache) // again, not a critical error to break the function.
+                printf("Failed to add entry: %s to hashmap cache.\n", orig_path);
+            else
+                printf("**Successfully added: %s to hashmap\n", orig_path);
+            /* print all the cache entries for debugging, if needed */
         }
         else {
-            printf("getattr: found_flag = 0\n");    
+            printf("getattr: found_flag = 0\n"); 
             retstat = -ENOENT;
             goto out;
         }
@@ -229,21 +422,27 @@ out:
 /* Check file access permissions */
 int tfs_access(const char *path, int mask)
 {
-   int retstat = 0;
-   file_entries *find;
-   char fpath[PATH_MAX];
-   tfs_fullpath(fpath, path);
-   #if 0
-   if (!(!(strcmp(path, "/")) || !(strcmp(path, "/autorun.inf"))))
-   {
-   strcat(fpath, "_dir");
-   }
-   #endif
-   HASH_FIND_STR(TFS_PRIV_DATA->head, fpath, find);
-   if (find != NULL)
+    int retstat = 0;
+    //file_entries *find;
+    char fpath[PATH_MAX];
+    char temp_rootdir[PATH_MAX];
+    tfs_fullpath(fpath, path);
+    #if 0
+    if (!(!(strcmp(path, "/")) || !(strcmp(path, "/autorun.inf"))))
+    {
         strcat(fpath, "_dir");
-   retstat = access(fpath, mask);
-   return retstat;
+    }
+    #endif
+    //HASH_FIND_STR(TFS_PRIV_DATA->head, fpath, find);
+    //if (find != NULL)
+    strcpy(temp_rootdir, TFS_PRIV_DATA->rootdir);
+    strcat(temp_rootdir, "/");
+    if (strcmp(fpath, temp_rootdir)) //|| (strcmp(path, "/autorun.inf")))
+        strcat(fpath, "_dir");
+    printf("tfs_access: fpath: %s\n", fpath);
+    printf("rootdir: %s\n", TFS_PRIV_DATA->rootdir);
+    retstat = access(fpath, mask);
+    return retstat;
 }
 
 /*Change the permission bits of a file */
@@ -390,7 +589,7 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     tfs_fullpath(fpath, path);
     HASH_FIND_STR(TFS_PRIV_DATA->head, fpath, find);
     if (find != NULL)
-    {
+    { //old logic
         #if 0
         /* checking if file inside the directory exists. If not present, just return 0 and don't print anything */
         if ((retstat = lstat(fpath, &statbuf)) != 0) {
@@ -398,9 +597,10 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
             goto out;
         }
         #endif
+    }
         printf("TFS_READ: offset: %jd, size: %zu\n", offset, size);
         strcat(fpath, "_dir");
-        strcat(fpath, path);
+        strcat(fpath, "/part");
         strcat(fpath, ".");
         strcpy(orig_path, fpath);
         //temp = find->head;
@@ -439,7 +639,6 @@ int tfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
             temp = temp->next; 
         }
         //strcat(buf, "\0");
-    }
     #if 0
     printf("TFS_READ: Before file open, flags: 0x%08x\n", fi->flags);
     fd = open(fpath, fi->flags);
@@ -463,12 +662,12 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     char fpath[PATH_MAX];
     char tmp_path[PATH_MAX];
     char del_path[PATH_MAX];
-    char orig_path[PATH_MAX];
-    char hashmap_fpath[PATH_MAX];
+    //char orig_path[PATH_MAX];
+    //char hashmap_fpath[PATH_MAX];
     char tmp_str[10];
     int part_no;
-    FILE *h_fp = NULL;
-    ListNode *temp = NULL;
+    //FILE *h_fp = NULL;
+    //ListNode *temp = NULL;
     Fuse_ll_info *f_ll_info;
     offset_t st_off_t, end_off_t;
     tfs_fullpath(fpath, path);
@@ -481,6 +680,7 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     /* This needs to be changed. The magic hashmap is going to store the default
      * mode (of the directory). keep the original mode.
      */
+    printf("path in tfs_write: %s\n", path);
     HASH_FIND_STR(TFS_PRIV_DATA->head, tmp_path, find);
     if (find != NULL) /*found entry in hash map */
     {   
@@ -489,18 +689,19 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
         //mode = find->f_mode;
         //printf("HASHMAP, write(): Found entry and setting mode\n");
         strcat(fpath, "_dir");
-        strcat(fpath, path);
+        strcat(fpath, "/part");
+        printf("fpath after concat: %s\n", fpath);
         
         /* New logic - retrieveing from fi->fh */
         f_ll_info = (Fuse_ll_info *) ((long) fi->fh);
         printf("TFS_OPEN: f_ll_info: %p, head: %p\n", f_ll_info, f_ll_info->head);        //printf("Fd: %d\n", f_ll_info->fd);
-       
+        #if 0   
         /* handing if offset = 0, overwrite complete file */
         if (offset == 0) {
             /* deleting the parts */
             strcat(del_path, "_dir");
             strcpy(hashmap_fpath, del_path);
-            strcat(del_path, path);
+            strcat(del_path, "/part");
             strcat(del_path, ".");
             temp = f_ll_info->head;
             strcpy(orig_path, del_path);
@@ -528,6 +729,7 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
             }
         }        
         *tmp_str = '\0';
+        #endif
         /*finding the correct part# from the linked list */
         part_no = findPartNumber(&f_ll_info->head);
         sprintf(tmp_str, "%c%d", '.', part_no);
@@ -717,6 +919,7 @@ int tfs_mkdir(const char *path, mode_t mode)
         }
             
         printf("adding %s dir to .hashmap\n", tmp_path);
+        printf("*******Mode in mkdir: %07o\n", mode);
         fprintf(root_fp, "%s\t%07o\n", path+1, mode);
         
     }
@@ -879,7 +1082,7 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
         add = (file_entries *) malloc (sizeof (file_entries));
         if (add == NULL) {
             printf("Malloc error\n");
-            retstat = -1;
+            retstat = -ENOMEM;
         }
         strcpy(add->f_name, tmp_path);
         add->f_mode = mode;
@@ -1091,6 +1294,7 @@ int main(int argc, char *argv[])
         goto out;
     }
     tfs_priv_data->head = NULL;
+    tfs_priv_data->cache_head = NULL;
     tfs_priv_data->init_file = (char *) malloc (strlen("init_file.txt") + 1);
     if (tfs_priv_data->init_file == NULL) {
         printf("Malloc() error\n");
