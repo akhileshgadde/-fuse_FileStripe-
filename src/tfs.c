@@ -1092,6 +1092,9 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     strcpy(tmp_path, fpath);
     d_mode = mode | S_IXUSR | S_IXGRP | S_IXOTH; /* Add execute permision b/c it's a directory*/
     strcat(fpath, "_dir");
+    
+    /* add logic to add correct path in .hashmap file from path */
+    
     strcpy(file, path + 1);
     retstat = mkdir(fpath, d_mode);
     if ( lstat(fpath, &statbuf) < 0) { //checking if directory is successfully created
@@ -1129,8 +1132,8 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
         if ((temp_str = strstr(fpath, path)) != NULL) {
             *temp_str = '\0';
             strcat(fpath, "/.hashmap");
-            printf("create: opening hashmap of %s\n", fpath);
         }
+        printf("create: opening hashmap of %s\n", fpath);
         root_fp = fopen(fpath, "a+");
         if (!root_fp) {
             retstat = -EINVAL;
