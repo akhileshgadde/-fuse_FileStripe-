@@ -70,6 +70,16 @@ int get_slash_count(const char *path)
     return count;
 }
 
+int check_dir_in_path(char *path, int len)
+{
+    int ret = 0;
+    if ((path[len-1] == 'r') && (path[len-2] == 'i') \
+        && (path[len-3] == 'd') && (path[len-4] == '_'))
+        ret = 1;
+    printf("check_dir_in_path, return value: %d\n", ret);
+    return ret;
+}
+
 void get_correct_fpath(const char *path, char *new_fpath, int len)
 {
     int pos1 = 0, pos2 = 0;
@@ -115,11 +125,12 @@ void get_correct_fpath(const char *path, char *new_fpath, int len)
 }
 
 /* find the last occurrence of a substring in the given string */
-char *my_strstr(char *fpath)
+int my_strstr(char *fpath)
 {
     char temp_fpath[PATH_MAX];
     char *pos_ptr = NULL;
     char *res;
+    int pos = 0;
     strncpy(temp_fpath, fpath, PATH_MAX);
     while ((res = strstr(temp_fpath, "_dir")) != NULL)
     {
@@ -127,8 +138,10 @@ char *my_strstr(char *fpath)
         strcpy(temp_fpath, res + 4);
         printf("my_strstr: temp_fpath: %s\n", temp_fpath);
     }
-    printf("my_strstsr: pos_ptr: %s\n", pos_ptr);
-    return pos_ptr;
+    printf("my_strstsr: last_slash_ptr: %s\n", pos_ptr);
+    pos = pos_ptr - temp_fpath;
+    return pos;
+    //*last_slash_ptr = '\0';
 }
 
 
@@ -323,6 +336,7 @@ int tfs_getattr(const char *path, struct stat *statbuf)
     char *last_slash_ptr;
     FILE *root_fp = NULL;
     size_t len = 0;
+//    int pos = 0;
     ssize_t read;
     char *line = NULL;
     int found_flag = 0;
@@ -344,30 +358,36 @@ int tfs_getattr(const char *path, struct stat *statbuf)
         if ((temp_str = strstr(fpath, path)) != NULL)
             *temp_str = '\0';
         #endif
+        #if 1
         slash_ct = get_slash_count(path);
         if (slash_ct > 1) {
             last_slash_ptr = strrchr(tmppath, '/');
+            if (last_slash_ptr)  { //Need to remove last _dir since one _dir is appeneded later.
+                printf("getattr: path passed to my_strstr: %s\n", tmppath);
+                //pos = my_strstr(tmppath);
+                //if (pos != 0)
+                //    tmppath[pos] = '\0';
+            }
         }
         else {
             last_slash_ptr = strstr(tmppath, path);
             printf("In else loop.\n");
         }
-        //*(last_slash_ptr+1) = '\0';
-        if (last_slash_ptr)  {//Need to remove last _dir since one _dir is appeneded later.
-            last_slash_ptr = my_strstr(tmppath);
-            if (last_slash_ptr)
-                *last_slash_ptr = '\0';
-        }
-        //printf("last_slash_ptr: %s\n",last_slash_ptr); 
+        
+        printf("last_slash_ptr: %s\n",last_slash_ptr);
+        if (last_slash_ptr)
+            *last_slash_ptr = '\0';
+        #endif
 
         //*last_slash_ptr = '\0';
-        printf("after strrchr. tmppath: %s\n", tmppath);
+        printf("after strrchr: tmppath: %s\n", tmppath);
         
         //strcpy(tmppath, fpath);
         
         //printf("tfs_getattr: fpath after strstr for hashmap: %s\n", fpath);
-        if (strcmp(tmppath,TFS_PRIV_DATA->rootdir)) //append _dir only if not rootdir
-            strcat(tmppath, "_dir"); 
+        if ((strcmp(tmppath,TFS_PRIV_DATA->rootdir))  \
+                && (!check_dir_in_path(tmppath, strlen(tmppath)))) //append _dir only if not rootdir or no _dir in end.
+            strcat(tmppath, "_dir");
         strcat(tmppath, "/.hashmap");
         printf("getattr: hashmap fpath: %s\n", tmppath);
         root_fp = fopen(tmppath, "r");
