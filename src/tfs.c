@@ -774,7 +774,7 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     {
         
         /* add the new part to the linked list - old logic */
-        addtoList(&find->head, part_no, st_off_t, end_off_t);
+        //addtoList(&find->head, part_no, st_off_t, end_off_t);
         
         /* New list with .hashmap */
         addtoList(&f_ll_info->head, part_no, st_off_t, end_off_t);
@@ -783,6 +783,9 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
         
         printf("Added to LL & f_ll_info: %p, head: %p\n", f_ll_info, f_ll_info->head);
         truncate(fpath, size); //Change the size of the file.
+        /* Add entry to .hashmap file */
+        //writeToHashmapFile(f_ll_info->fp, &f_ll_info->head, f_ll_info->fmode);
+
         close(fd);
     }
 //endReturn:
@@ -891,7 +894,7 @@ int tfs_mkdir(const char *path, mode_t mode)
     printf("In mkdir function\n");
     int retstat = 0;
     file_entries *add;
-    FILE *fp, *root_fp;
+    FILE *fp; //*root_fp;
     //int fd;
     char fpath[PATH_MAX];
     char tmp_path[PATH_MAX];
@@ -931,23 +934,16 @@ int tfs_mkdir(const char *path, mode_t mode)
             strcat(fpath, "/.hashmap");
             printf("create: opening hashmap of %s\n", fpath);
         }
-        root_fp = fopen(fpath, "a+");
-        if (!root_fp) {
-            printf("unable to open parent hashmap\n");
-            retstat = -EINVAL;
+        retstat = writetoRootHashmapFile(fpath, (path+1), mode);
+        if (retstat < 0) {
+            printf("Error in writing to hashmap file: %s\n", fpath);
             goto out;
         }
-            
-        printf("adding %s dir to .hashmap\n", tmp_path);
-        printf("*******Mode in mkdir: %07o\n", mode);
-        fprintf(root_fp, "%s\t%07o\n", path+1, mode);
-        
     }
+
 out:
     if (fp)
         fclose(fp);
-    if (root_fp)
-        fclose(root_fp);
     return retstat;
 }
 
@@ -1046,9 +1042,10 @@ int tfs_opendir(const char *path, struct fuse_file_info *fi)
     //HASH_FIND_STR(TFS_PRIV_DATA->head, fpath, find);
     
     //if (find != NULL)
-    fpath[strlen(fpath)-1] = '\0';
+    //fpath[strlen(fpath)] = '\0';
     printf("TFS_PRIV_DATA->rootdir: %s\n", TFS_PRIV_DATA->rootdir);
-    if (strcmp(fpath, TFS_PRIV_DATA->rootdir))
+    if ((strncmp(fpath, TFS_PRIV_DATA->rootdir, strlen(TFS_PRIV_DATA->rootdir))) && \
+       ! (strlen(fpath) == strlen(TFS_PRIV_DATA->rootdir) + 1)) //without strlen check, would be true in all cases since all paths start with rootdir.
         strcat(fpath,"_dir");
     strcat(fpath, "/.hashmap");
     if ((retstat = lstat(fpath, &statbuf)) != 0) {
@@ -1078,26 +1075,28 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
     printf("In create function\n");
     int retstat = 0;
+    int slash_ct = 0;
     struct stat statbuf;
     char fpath[PATH_MAX];
     char tmp_path[PATH_MAX];
-    char file[PATH_MAX];
-    char *temp_str;
-    FILE *fp, *root_fp;
+    //char file[PATH_MAX];
+    //char *temp_str;
+    FILE *fp; // *root_fp;
     file_entries *add; // *find;
     mode_t d_mode;
+    char *last_slash_ptr = NULL;
     Fuse_ll_info *f_ll_info = NULL;
 
     tfs_fullpath(fpath, path);
+    strcat(fpath, "_dir");
     strcpy(tmp_path, fpath);
     d_mode = mode | S_IXUSR | S_IXGRP | S_IXOTH; /* Add execute permision b/c it's a directory*/
-    strcat(fpath, "_dir");
     
     /* add logic to add correct path in .hashmap file from path */
     
-    strcpy(file, path + 1);
+    //strcpy(file, path + 1);
     retstat = mkdir(fpath, d_mode);
-    if ( lstat(fpath, &statbuf) < 0) { //checking if directory is successfully created
+    if (lstat(fpath, &statbuf) < 0) { //checking if directory is successfully created
         printf("Directory creation error\n");
         retstat = tfs_error("tfs_create create");
     }
@@ -1111,7 +1110,7 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
         add->f_mode = mode;
         add->head = NULL;
         HASH_ADD_STR(TFS_PRIV_DATA->head, f_name, add);
-        strcat(tmp_path, "_dir");
+        
         printf("Added fpath %s into hash table\n", add->f_name);
         /* create a .hashmap file and use that for storing linked list info persistently */
         strcat(fpath, "/.hashmap");
@@ -1128,21 +1127,30 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
         f_ll_info->fp = fp;
         f_ll_info->head = NULL;
         f_ll_info->fmode = mode;
-        /* adding entry to parent dir .hashmap file */
-        if ((temp_str = strstr(fpath, path)) != NULL) {
-            *temp_str = '\0';
-            strcat(fpath, "/.hashmap");
+        
+        /* Find the correct hashmap path(parent's) to add the new file entry */
+        slash_ct = get_slash_count(path);
+        if (slash_ct > 1) {
+            last_slash_ptr = strrchr(tmp_path, '/');
         }
-        printf("create: opening hashmap of %s\n", fpath);
-        root_fp = fopen(fpath, "a+");
-        if (!root_fp) {
-            retstat = -EINVAL;
+        else
+            last_slash_ptr = strstr(tmp_path, path);
+        if (last_slash_ptr)
+            *last_slash_ptr = '\0';
+        printf("after last_slash_ptr, NULL: %s\n", tmp_path);
+        if ((strcmp(tmp_path,TFS_PRIV_DATA->rootdir))  \
+                && (!check_dir_in_path(tmp_path, strlen(tmp_path)))) //append _dir only if not rootdir or no _dir in end.
+            strcat(tmp_path, "_dir");
+        strcat(tmp_path, "/.hashmap");
+        
+        printf("create: opening hashmap of %s\n", tmp_path);
+        retstat = writetoRootHashmapFile(tmp_path, (path+1), mode);
+        if (retstat < 0) {
+            printf("TFS_CREATE: Unable to make entry in parent hashmap file.\n");
+            retstat = -EPERM;
             goto out;
         }
-        printf("Writing file: %s, mode: %07o\n", file, mode);
-        fprintf(root_fp, "%s\t%07o\n", file, mode);
-        fclose(root_fp);/* may need to be moved to tfs_release () */
-        printf("TFS_CREATE: f_ll_info: %p\n", f_ll_info);
+        //printf("TFS_CREATE: f_ll_info: %p\n", f_ll_info);
         //printf("fd: %d\n", fd);
         fi->fh = (long) f_ll_info;
     }
