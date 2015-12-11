@@ -1,6 +1,7 @@
 #include "listnodes.h"
 #include <errno.h>
 #include "getline.h"
+#include <errno.h>
 
 typedef struct fuse_ll_info {
     FILE *fp;
@@ -46,4 +47,25 @@ int writeToHashmapFile(FILE *fp, ListNode **head, mode_t fmode)
         temp = temp->next;
     }
     return ret;
+}
+
+int writetoRootHashmapFile(char *h_path, const char *add_path,  mode_t mode)
+{
+    FILE *root_fp = NULL;
+    //char *tmp_str;
+    int retstat = 0;
+    /* adding to parent .hashmap file */
+    root_fp = fopen(h_path, "a+");
+    if (!root_fp) {
+        printf("unable to open parent hashmap\n");
+        retstat = -EINVAL;
+        goto out;
+    }
+    printf("adding path: %s, mode: %07o to .hashmap\n", add_path, mode);
+    fprintf(root_fp, "%s\t%07o\n", add_path, mode); 
+out:
+    if (root_fp)
+        fclose(root_fp);
+
+    return retstat;
 }

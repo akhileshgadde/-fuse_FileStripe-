@@ -397,10 +397,11 @@ int tfs_getattr(const char *path, struct stat *statbuf)
             goto out;   
         }
         printf("Opened .hashmap file and reading\n");
+        last_slash_ptr = strrchr(path, '/');
         while ((read = getline(&line, &len, root_fp)) != -1) {
             sscanf(line, "%s\t%07o", file, &mode);
             printf("%s\t%07o\n", file, mode);
-            if (!strcmp(file, path+1)) {
+            if (!strcmp(file, (last_slash_ptr + 1))) {
                 printf("found file in .hashmap: %s\n", file);
                 found_flag = 1;
                 break;
@@ -1144,7 +1145,9 @@ int tfs_create(const char *path, mode_t mode, struct fuse_file_info *fi)
         strcat(tmp_path, "/.hashmap");
         
         printf("create: opening hashmap of %s\n", tmp_path);
-        retstat = writetoRootHashmapFile(tmp_path, (path+1), mode);
+        /* writing directly path is not correct - like dir2/file1. Instead it should be onlu file1 */
+        last_slash_ptr = strrchr(path, '/');
+        retstat = writetoRootHashmapFile(tmp_path, (last_slash_ptr + 1), mode);
         if (retstat < 0) {
             printf("TFS_CREATE: Unable to make entry in parent hashmap file.\n");
             retstat = -EPERM;
