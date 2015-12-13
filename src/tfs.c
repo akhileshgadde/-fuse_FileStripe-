@@ -26,7 +26,7 @@
 
 #define TFS_PRIV_DATA ((my_tfs_data *) fuse_get_context()->private_data)
 #define MAX_SIZE        2*1024*1024
-
+#define WRITE_REPLACE_FLAGS 0x8001
 
 typedef struct file_entries_t
 {
@@ -528,28 +528,80 @@ int tfs_open(const char *path, struct fuse_file_info *fi)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
+    //char del_path[PATH_MAX];
+    //char orig_path[PATH_MAX];
     FILE *fp;
+    //ListNode *temp = NULL;
+    //int part_no;
     mode_t fmode;
     //printf("TFS_OPEN: Flags: 0x%08x\n", fi->flags);
     Fuse_ll_info *f_ll_info;
+    //char hashmap_fpath[PATH_MAX];
+    //char tmp_str[10];
+
+    tfs_fullpath(fpath, path);
     f_ll_info = (Fuse_ll_info *) malloc(sizeof(Fuse_ll_info));
     if (!f_ll_info) {
         retstat = -ENOMEM;
         goto out;
     }
-    tfs_fullpath(fpath, path);
-    strcat(fpath, "_dir/.hashmap");
-    printf("TFS_OPEN: fpath: %s\n", fpath);
-    fp = fopen(fpath, "a+");/* using the flags in struct fuse_file_info since read would get read flags and write would get write flags and same logic applies for .hashmap also  - may fail in file append case?? */
-    if (!fp) {
-        retstat = tfs_error("TFS_OPEN open");
-        goto out;
-    }
+    
+    #if 0
+    /* handling overwriting complete file if flags = WRITE_REPLACE_FLAGS(0x8001). 
+    *  Don't need to xplicity check if file exists at this point, since 
+    *  it shouldn't be in open in the first case if teh file doesn't exist
+    *  Lookup (tfs_getattr()) would have thrown an error in the first place.
+    */
+    if (fi->flags == WRITE_REPLACE_FLAGS)
+    {
+        printf("****About to rewrite the complete file.\n");
+        strncpy(del_path, fpath, PATH_MAX);
+        strcat(del_path, "_dir");
+        strcpy(hashmap_fpath, del_path);
+        strcat(del_path, "/part");
+        strcat(del_path, ".");
+        temp = f_ll_info->head;
+        strcpy(orig_path, del_path);
+        while (temp != NULL)
+        {
+            part_no = temp->part_no;
+            sprintf(del_path, "%s%d", orig_path, part_no);
+            printf("tfs_open: deleting %s\n", del_path);
+            retstat = unlink(del_path);
+            if (retstat < 0)
+                retstat = tfs_error("Unlink in tfs_open");
+            temp = temp->next;
+        }
+        /* del from actual LL */
+        delAllFromList(&f_ll_info->head);
+        f_ll_info->head = NULL;
+        // h_fp = f_ll_info->fp;
+        /* del from actual .hashmap file */
+        strcat(hashmap_fpath, "/.hashmap");
+        printf("tfs_write: .hashmap for reopen: %s\n", hashmap_fpath);
+        fp = fopen(hashmap_fpath,"w+");
+        if (!fp) {
+            printf("Error in reopening the .hashmap file.\n");
+            retstat = tfs_error(".hashmap file re-open error.\n");
+        }
+    }        
+    //*tmp_str = '\0';
+    else
+    {
+    #endif
+        printf("****tfs_open: fi->flags: %d\n", fi->flags);
+        strcat(fpath, "_dir/.hashmap");
+        printf("TFS_OPEN: fpath: %s\n", fpath);
+        fp = fopen(fpath, "a+");/* using the flags in struct fuse_file_info since read would get read flags and write would get write flags and same logic applies for .hashmap also  - may fail in file append case?? */
+        if (!fp) {
+            retstat = tfs_error("TFS_OPEN open");
+            goto out;
+        }
+    
     f_ll_info->fp = fp;
     printf("fp: %p, f_ll_info->fp: %p\n", fp, f_ll_info->fp);
-    
     f_ll_info->head = NULL;
-    
+
     //printf("TFS_OPEN: f_ll_info: %p, head: %p\n", f_ll_info, f_ll_info->head);
     retstat = readHashmapFile(f_ll_info->fp, &f_ll_info->head, &fmode);
     fclose (f_ll_info->fp);
@@ -566,6 +618,7 @@ int tfs_open(const char *path, struct fuse_file_info *fi)
     printf("TFS_OPEN: f_ll_info: %p, head: %p\n", f_ll_info, f_ll_info->head);
     printList(&f_ll_info->head);
     fi->fh = (long) f_ll_info;
+
 out:
     if (retstat < 0) {
         printf("tfs_open: retstat < 0\n");
@@ -683,17 +736,17 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
     char fpath[PATH_MAX];
     char tmp_path[PATH_MAX];
     char del_path[PATH_MAX];
-    //char orig_path[PATH_MAX];
-    //char hashmap_fpath[PATH_MAX];
+    char orig_path[PATH_MAX];
+    char hashmap_fpath[PATH_MAX];
     char tmp_str[10];
     int part_no;
-    //FILE *h_fp = NULL;
-    //ListNode *temp = NULL;
+    FILE *h_fp = NULL;
+    ListNode *temp = NULL;
     Fuse_ll_info *f_ll_info;
     offset_t st_off_t, end_off_t;
     tfs_fullpath(fpath, path);
     strcpy(tmp_path, fpath);
-    strcpy(del_path, fpath);
+    strncpy(del_path, fpath, PATH_MAX);
     file_entries *find; //*file_find;
     //mode_t mode;
     int fd;
@@ -702,6 +755,7 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
      * mode (of the directory). keep the original mode.
      */
     printf("path in tfs_write: %s\n", path);
+    printf("Tfs_write: Flags: %07x\n", fi->flags);
     HASH_FIND_STR(TFS_PRIV_DATA->head, tmp_path, find);
     if (find != NULL) /*found entry in hash map */
     {   
@@ -711,14 +765,19 @@ int tfs_write(const char *path, const char *buf, size_t size, off_t offset,
         //printf("HASHMAP, write(): Found entry and setting mode\n");
         strcat(fpath, "_dir");
         strcat(fpath, "/part");
-        printf("fpath after concat: %s\n", fpath);
+        //printf("fpath after concat: %s\n", fpath);
         
         /* New logic - retrieveing from fi->fh */
         f_ll_info = (Fuse_ll_info *) ((long) fi->fh);
         printf("TFS_OPEN: f_ll_info: %p, head: %p\n", f_ll_info, f_ll_info->head);        //printf("Fd: %d\n", f_ll_info->fd);
-        #if 0   
-        /* handing if offset = 0, overwrite complete file */
-        if (offset == 0) {
+        #if 1
+         /* handling overwriting complete file if flags = WRITE_REPLACE_FLAGS(0x8001). 
+          *  Don't need to xplicity check if file exists at this point, since 
+          *  it shouldn't be in open in the first case if teh file doesn't exist
+          *  Lookup (tfs_getattr()) would have thrown an error in the first place.
+         */
+        if (fi->flags == WRITE_REPLACE_FLAGS)
+        {     
             /* deleting the parts */
             strcat(del_path, "_dir");
             strcpy(hashmap_fpath, del_path);
