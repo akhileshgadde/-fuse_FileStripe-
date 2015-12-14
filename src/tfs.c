@@ -970,16 +970,22 @@ int tfs_unlink(const char *path)
     int retstat = 0;
     //file_entries *find;
     mode_t fmode;
+    size_t len = 0;
     ListNode *head = NULL, *temp = NULL;
-    FILE *fp = NULL;
+    FILE *fp = NULL, *tmp_fp = NULL;
     char fpath[PATH_MAX];
     char dpath[PATH_MAX];
     char hpath[PATH_MAX];
     char orig_path[PATH_MAX];
+    char *last_slash_ptr = NULL;
+    ssize_t read;
+    char *line = NULL;
+    int slash_ct;
+    
     tfs_fullpath(fpath, path); //for file
     strcat(fpath, "_dir");
     strcpy(hpath, fpath); //For directory
-    strcpy(dpath, fpath);
+    strcpy(dpath, fpath); 
     printf("Deleting %s file\n", fpath);
     strcat(hpath, "/.hashmap");
     
@@ -991,14 +997,15 @@ int tfs_unlink(const char *path)
     }
     retstat = readHashmapFile(fp, &head, &fmode);
     fclose(fp);
+    fp = NULL;
     
     strcat(fpath, "/part.");
     strcpy(orig_path, fpath);
     temp = head;
     while (temp != NULL)
     {
-        sprintf(fpath, "%s%d", orig_path, head->part_no);
-        printf("tfs_write: deleting %s\n", fpath);
+        sprintf(fpath, "%s%d", orig_path, temp->part_no);
+        printf("tfs_write: deleting part: %s\n", fpath);
         retstat = unlink(fpath);
         if (retstat < 0)
             retstat = tfs_error("tfs_unlink error for parts");
@@ -1016,6 +1023,54 @@ int tfs_unlink(const char *path)
     if (retstat < 0)
         retstat = tfs_error("tfs_unlink unlink directory");
     
+    /* Deleting the entry from parent hashmap file */
+    tfs_fullpath(fpath, path);
+    slash_ct = get_slash_count(path);
+    if (slash_ct > 1) 
+        last_slash_ptr = strrchr(fpath, '/');
+    else
+        last_slash_ptr = strstr(fpath, path);
+    if (last_slash_ptr)
+        *last_slash_ptr = '\0';
+    if ((strcmp(fpath,TFS_PRIV_DATA->rootdir))  \
+        && (!check_dir_in_path(fpath, strlen(fpath)))) //append _dir only if not rootdir or no _dir in end.
+        strcat(fpath, "_dir");
+    strcat(fpath, "/.hashmap");
+    fp = fopen(fpath, "r");
+    if (!fp) {
+        printf("Error in opening hashmap file of parent\n");
+        retstat = -EINVAL;
+        goto out;
+    }
+    strcpy(orig_path, fpath);
+    
+    /* writing to temporary hashmap file and then renaming */
+    strcat(fpath, ".tmp");
+    tmp_fp = fopen(fpath, "w+");
+    if (!tmp_fp) {
+        printf("Error opening temporary hashmap file.\n");
+        retstat = -EINVAL;
+        goto out;
+    }
+    strcpy(dpath, "/0");;
+    last_slash_ptr = strrchr(path, '/');
+    while ((read = getline(&line, &len, fp)) != -1) {
+        sscanf(line, "%s\t%07o", dpath, &fmode);
+        printf("%s\t%07o\n", dpath, fmode);
+        if (strcmp(dpath, (last_slash_ptr + 1)))
+            writeEntryToRootHashmapFile(tmp_fp, dpath, fmode);
+        else
+            printf("found file in .hashmap: %s\n", dpath);
+    }
+    fclose(tmp_fp);
+    printf("UNLINK: Renaming %s to %s\n", fpath, orig_path);
+    retstat = rename(fpath, orig_path);
+    if (retstat < 0) {
+        retstat = tfs_error("tfs_unlink rename");
+        goto out; 
+    }
+    
+
     #if 0
     HASH_FIND_STR(TFS_PRIV_DATA->head, fpath, find);
     if (find != NULL)
@@ -1051,6 +1106,8 @@ int tfs_unlink(const char *path)
     #endif
 
 out:
+    if (line)
+        free(line);
     return retstat;
 }
 
