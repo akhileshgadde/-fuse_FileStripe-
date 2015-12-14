@@ -2,6 +2,8 @@
 *   The code has been based on BBFS file system written by Prof. Joseph J. Pfeiffer, 
 *   Emeritus Professor, New Mexico State University.
 *   Compiling: gcc -ggdb -Wall -o tfs tfs.c `pkg-config fuse --cflags --libs`
+*   Running: ./tfs -d -f rootdir/ mntdir/
+*   -d and -f to enable debugs and prints
 */
 
 #include "params.h"
@@ -149,65 +151,44 @@ static void tfs_fullpath(char fpath[PATH_MAX], const char *path)
 {
     char temp_path[PATH_MAX];
     char new_fpath[PATH_MAX];
-    char *temp_str = NULL;
+    //char *temp_str = NULL;
     //int init_slash_flag = 0;
     int count = 0, len; //pos1 = 0, pos2 = 0;
     file_entries *find_cache = NULL;
     printf("Fullpath for: %s\n", path);
     
     strcpy(temp_path, path);
+    #if 0
     /* dealing with path like /dir/file1 */
+    
     while ((temp_str = strstr(temp_path, "/")) != NULL) {
         count++;
         strcpy(temp_path, (temp_str + 1));
     }
     printf("***fullpath: count: %d\n", count);
-    
     strcpy(temp_path, path);
-    len = strlen(path);
-    new_fpath[len] = '\0';
-    if (count > 1) 
-    {
-        get_correct_fpath(path, new_fpath, len);
-    }
-    //printf("new_fpath after get_correct_fpath: %s\n", new_fpath); 
-    
-    # if 0
-    t_newpath = &new_fpath;
-    t_path = path;
-    if (count > 1) {
-        while ((temp_str = strstr(temp_path, "/")) != NULL) {
-            t_tempstr = temp_path;
-            while (*t_path != *(t_tempstr-1))
-            {
-                *t_newpath = *t_path;
-                t_newpath++;
-                t_path++;
-            }
-            *t_newpath = '\0';
-            printf("t_newpath: %s\n",new_fpath); 
-            strcat(new_fpath,"_dir");
-            strcpy(temp_path, (temp_str + 1));
-        }
-        printf("***new_fpath: %s\n", new_fpath);
-    }
     #endif
-    
+    count = get_slash_count(path);
+    len = strlen(path);
+    //new_fpath[len] = '\0';
+    if (count > 1) 
+        get_correct_fpath(path, new_fpath, len);
+    //printf("new_fpath after get_correct_fpath: %s\n", new_fpath); 
+     
     strcpy(fpath, TFS_PRIV_DATA->rootdir);
     strcpy(temp_path, fpath);
-    if (count > 1) {
-        //printf("count>1, appending: %s\n", new_fpath);
+    if (count > 1)
         strncat(temp_path, new_fpath, PATH_MAX);
-    }
     else
         strncat(temp_path, path, PATH_MAX);
+    
+    printf("######Checking for %s in cache\n", temp_path);
     HASH_FIND_STR(TFS_PRIV_DATA->cache_head, temp_path, find_cache);
     if ((find_cache != NULL) && (S_ISDIR(find_cache->f_mode)) && (strcmp(fpath, TFS_PRIV_DATA->rootdir)))
     {
         strcat(fpath, "_dir");
-        printf("** found entry in cache and new fpath: %s\n", fpath);
+        printf("####Found entry in cache: %s\n", fpath);
     }
-
     //strncat(fpath, path, PATH_MAX); 
     strcpy(fpath, temp_path);
     printf("TFS_FULLPATH() before return, fpath: %s\n", fpath);
@@ -331,7 +312,7 @@ int tfs_getattr(const char *path, struct stat *statbuf)
     mode_t mode;
     int slash_ct = 0;
     char tmppath[PATH_MAX];
-    file_entries *add_cache;
+    file_entries *add_cache = NULL;//, *find_cache = NULL;
     //file_entries *find;
     char *last_slash_ptr;
     FILE *root_fp = NULL;
@@ -349,35 +330,38 @@ int tfs_getattr(const char *path, struct stat *statbuf)
     /*check if root directory or autorun.inf file */
     if ((!strcmp(path, "/")) || (!strcmp(path, "/autorun.inf")))
     {
-        printf("Fpath2: %s\n", fpath);
+        printf("Fpath in tfs_getattr(): %s\n", fpath);
         retstat = lstat(fpath, statbuf);
     }
     else { /* All other files */
- /* this will work for normal files - /file1,etc but wouldn't work for paths that have _dir like dir1_dir/file1 since path given by Fuse is /dir1/file1 and we are adding _dir in tfs_fullpath */
-        #if 0
-        if ((temp_str = strstr(fpath, path)) != NULL)
-            *temp_str = '\0';
-        #endif
-        #if 1
+ /* this will work for normal files - /file1, etc.. but wouldn't work for paths that have _dir like dir1_dir/file1 since path given by Fuse is /dir1/file1 and we are adding _dir in tfs_fullpath */
+      
+    #if 0  
+        /* lookup fpath in cache and if present, can return without doing the below work*/
+        HASH_FIND_STR(TFS_PRIV_DATA->cache_head, fpath, find_cache);    
+        if (!find_cache) {
+            cache_found = 1;
+            #if 0
+            if (find_cache->f_mode)
+                mode = find_cache->f_mode;
+            #endif
+            goto found_cache;
+        }
+    #endif
+        
         slash_ct = get_slash_count(path);
         if (slash_ct > 1) {
             last_slash_ptr = strrchr(tmppath, '/');
-            if (last_slash_ptr)  { //Need to remove last _dir since one _dir is appeneded later.
                 printf("getattr: path passed to my_strstr: %s\n", tmppath);
-                //pos = my_strstr(tmppath);
-                //if (pos != 0)
-                //    tmppath[pos] = '\0';
-            }
         }
         else {
             last_slash_ptr = strstr(tmppath, path);
-            printf("In else loop.\n");
+            //printf("In else loop.\n");
         }
         
         printf("last_slash_ptr: %s\n",last_slash_ptr);
         if (last_slash_ptr)
             *last_slash_ptr = '\0';
-        #endif
 
         //*last_slash_ptr = '\0';
         printf("after strrchr: tmppath: %s\n", tmppath);
@@ -407,26 +391,30 @@ int tfs_getattr(const char *path, struct stat *statbuf)
                 break;
             }
         }
-        if (found_flag == 1) {
+//found_cache:
+        if (found_flag) { //(|| cache_found) {
             strcat(fpath, "_dir");
             printf("lstat on path: %s\n", fpath);
             retstat = lstat(fpath, statbuf);
             /* Add to the hashmap cache the full path */
-            assert (retstat == 0);
+            //assert (retstat == 0);
             
             //printf("st_mode from statbuf: %07o, mode from file: %07o\n", statbuf->st_mode, mode); 
-            if (S_ISREG(mode)) {
+            if ((retstat == 0) && (S_ISREG(mode))) {
+                printf("retstat=0 and setting mode since reg\n");
                 //printf("Setting mode: %07o to st_mode\n", mode);
                 statbuf->st_mode = mode;
                 //printf("after setting mode: %07o\n", statbuf->st_mode);
             }
-            /* adding successful lookup to the global hashmap */
-            add_cache = addtoHashmap(statbuf->st_mode, orig_path, &(TFS_PRIV_DATA->cache_head));
-            if (!add_cache) // again, not a critical error to break the function.
-                printf("Failed to add entry: %s to hashmap cache.\n", orig_path);
-            else
-                printf("**Successfully added: %s to hashmap\n", orig_path);
-            /* print all the cache entries for debugging, if needed */
+            /* adding successful lookup to the global hashmap, only if it doesn't already exist in hashmap */
+            //if (!cache_found) 
+                printf("#####TFS_GETATTR(): Adding %s to cache.\n", orig_path);
+                add_cache = addtoHashmap(statbuf->st_mode, orig_path, &(TFS_PRIV_DATA->cache_head));
+                if (!add_cache) // again, not a critical error to break the function.
+                    printf("Failed to add entry: %s to hashmap cache.\n", orig_path);
+                else
+                    printf("**Successfully added: %s to hashmap\n", orig_path);
+                /* print all the cache entries for debugging, if needed */
         }
         else {
             printf("getattr: found_flag = 0\n"); 
