@@ -49,6 +49,12 @@ int writeToHashmapFile(FILE *fp, ListNode **head, mode_t fmode)
     return ret;
 }
 
+void writeEntryToRootHashmapFile(FILE *fp, const char *add_path,  mode_t mode)
+{
+    printf("adding path: %s, mode: %07o to .hashmap\n", add_path, mode);
+    fprintf(fp, "%s\t%07o\n", add_path, mode);
+}
+
 int writetoRootHashmapFile(char *h_path, const char *add_path,  mode_t mode)
 {
     FILE *root_fp = NULL;
@@ -61,11 +67,13 @@ int writetoRootHashmapFile(char *h_path, const char *add_path,  mode_t mode)
         retstat = -EINVAL;
         goto out;
     }
-    printf("adding path: %s, mode: %07o to .hashmap\n", add_path, mode);
-    fprintf(root_fp, "%s\t%07o\n", add_path, mode); 
+    writeEntryToRootHashmapFile(root_fp, add_path, mode);
+    //printf("adding path: %s, mode: %07o to .hashmap\n", add_path, mode);
+    //fprintf(root_fp, "%s\t%07o\n", add_path, mode); 
 out:
     if (root_fp)
         fclose(root_fp);
 
     return retstat;
 }
+

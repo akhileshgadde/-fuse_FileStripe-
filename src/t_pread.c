@@ -1,7 +1,7 @@
 /*  C file to read from specific offset 
 *   Specify the starting and ending offset in the command line
 *   Compiling: gcc -Wall -Werror t_pread.c -o t_pread
-*   Running: ./t_pread <start-offset> <end-offset>
+*   Running: ./t_pread <file-name> <file-name> <file-name> <file-name> <file-name> <file-name> <file-name> <file-name> <file-name> <start-offset> <end-offset>
 */
 
 #include <stdio.h>
